@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { RepairRequest, Employee } from '@/lib/types'
+import { RepairRequest, Employee, TechRequest } from '@/lib/types'
 
 // UID ชั่วคราว — Phase 4 จะแทนด้วย LINE userId จริง
 export const DEV_LINE_UID = 'U_mock_dev_001'
@@ -116,7 +116,122 @@ export async function rateRepairRequest(lineUid: string, ticketNo: string, ratin
   if (error) throw new Error(error.message)
 }
 
+// ─── Technician ──────────────────────────────────────────────────────────────
+
+export async function isTechnician(lineUid: string): Promise<boolean> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('employees')
+    .select('is_technician')
+    .eq('line_uid', lineUid)
+    .single()
+  return data?.is_technician === true
+}
+
+export async function getTechnicianList(): Promise<Employee[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('employees')
+    .select('*')
+    .eq('is_technician', true)
+    .order('display_name')
+  return (data ?? []).map(rowToEmployee)
+}
+
+export async function getAllRequests(filter?: 'pending' | 'in_progress' | 'done' | 'all'): Promise<TechRequest[]> {
+  const supabase = await createClient()
+  let q = supabase
+    .from('repair_requests')
+    .select('*, employees!repair_requests_employee_id_fkey(display_name, phone)')
+    .order('created_at', { ascending: false })
+  if (filter && filter !== 'all') q = q.eq('status', filter)
+  const { data, error } = await q
+  if (error) throw new Error(error.message)
+  return (data ?? []).map(rowToTechRequest)
+}
+
+export async function acceptRequest(ticketNo: string, techLineUid: string): Promise<void> {
+  const supabase = await createClient()
+  const { data: tech } = await supabase.from('employees').select('id, display_name').eq('line_uid', techLineUid).single()
+  if (!tech) throw new Error('ไม่พบข้อมูลช่าง')
+  const now = new Date().toISOString()
+  const { data: req } = await supabase.from('repair_requests').select('timeline').eq('ticket_no', ticketNo).single()
+  const timeline = [...((req?.timeline as object[]) ?? []), { label: `มอบหมายช่าง · ${tech.display_name}`, time: now, status: 'done' }]
+  const { error } = await supabase
+    .from('repair_requests')
+    .update({ status: 'in_progress', technician: tech.display_name, assigned_technician_id: tech.id, timeline })
+    .eq('ticket_no', ticketNo)
+  if (error) throw new Error(error.message)
+}
+
+export async function updateRequestStatus(
+  ticketNo: string,
+  status: 'in_progress' | 'done' | 'cancelled',
+  extra?: { beforePhotos?: string[]; afterPhotos?: string[]; adminMessage?: string; techName?: string }
+): Promise<void> {
+  const supabase = await createClient()
+  const { data: req } = await supabase.from('repair_requests').select('timeline, admin_messages').eq('ticket_no', ticketNo).single()
+  const now = new Date().toISOString()
+
+  const statusLabel: Record<string, string> = {
+    in_progress: 'กำลังดำเนินการ',
+    done: 'เสร็จสิ้น',
+    cancelled: 'ยกเลิก',
+  }
+  const timeline = [...((req?.timeline as object[]) ?? []), { label: statusLabel[status], time: now, status: status === 'done' ? 'done' : 'current' }]
+  const adminMessages = extra?.adminMessage
+    ? [...((req?.admin_messages as object[]) ?? []), { from: extra.techName ?? 'ช่าง', text: extra.adminMessage, time: now }]
+    : req?.admin_messages
+
+  const update: Record<string, unknown> = { status, timeline, admin_messages: adminMessages }
+  if (extra?.beforePhotos) update.before_photos = extra.beforePhotos
+  if (extra?.afterPhotos) update.after_photos = extra.afterPhotos
+
+  const { error } = await supabase.from('repair_requests').update(update).eq('ticket_no', ticketNo)
+  if (error) throw new Error(error.message)
+}
+
+export async function reassignRequest(ticketNo: string, newTechLineUid: string): Promise<void> {
+  const supabase = await createClient()
+  const { data: tech } = await supabase.from('employees').select('id, display_name').eq('line_uid', newTechLineUid).single()
+  if (!tech) throw new Error('ไม่พบช่าง')
+  const { data: req } = await supabase.from('repair_requests').select('timeline').eq('ticket_no', ticketNo).single()
+  const timeline = [...((req?.timeline as object[]) ?? []), { label: `โอนงานให้ · ${tech.display_name}`, time: new Date().toISOString(), status: 'done' }]
+  const { error } = await supabase
+    .from('repair_requests')
+    .update({ technician: tech.display_name, assigned_technician_id: tech.id, timeline })
+    .eq('ticket_no', ticketNo)
+  if (error) throw new Error(error.message)
+}
+
 // ─── Row mapper ───────────────────────────────────────────────────────────────
+
+function rowToEmployee(row: Record<string, unknown>): Employee {
+  return {
+    id: row.id as string,
+    displayName: row.display_name as string,
+    lineAvatar: row.line_avatar as string | null,
+    employeeCode: row.employee_code as string,
+    building: row.building as string,
+    floor: row.floor as string,
+    phone: row.phone as string,
+    isRegistered: true,
+    isTechnician: row.is_technician as boolean,
+  }
+}
+
+function rowToTechRequest(row: Record<string, unknown>): TechRequest {
+  const emp = row.employees as { display_name: string; phone: string } | null
+  const base = rowToRequest(row)
+  return {
+    ...base,
+    employeeName: emp?.display_name ?? '—',
+    employeePhone: emp?.phone ?? '—',
+    beforePhotos: (row.before_photos as string[]) ?? [],
+    afterPhotos: (row.after_photos as string[]) ?? [],
+    assignedTechnicianId: (row.assigned_technician_id as string | null) ?? null,
+  }
+}
 
 function rowToRequest(row: Record<string, unknown>): RepairRequest {
   const d = new Date(row.created_at as string)

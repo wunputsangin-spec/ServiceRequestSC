@@ -5,6 +5,7 @@ export type WorkType = 'electric' | 'plumbing' | 'ac' | 'structure' | 'door' | '
 export type ActiveFilter = 'all' | 'pending' | 'done'
 
 export interface Employee {
+  id?: string
   displayName: string
   lineAvatar: string | null
   employeeCode: string
@@ -12,7 +13,9 @@ export interface Employee {
   floor: string
   phone: string
   isRegistered: boolean
+  isTechnician?: boolean
 }
+
 
 export interface TimelineStep {
   label: string
@@ -40,6 +43,14 @@ export interface RepairRequest {
   adminMessages: AdminMessage[]
   rating: number | null
   photos: string[]
+}
+
+export interface TechRequest extends RepairRequest {
+  employeeName: string
+  employeePhone: string
+  beforePhotos: string[]
+  afterPhotos: string[]
+  assignedTechnicianId: string | null
 }
 
 export interface RepairDraft {
