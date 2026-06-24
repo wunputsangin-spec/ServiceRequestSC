@@ -1,16 +1,21 @@
-'use client'
-
 import Link from 'next/link'
-import { mockEmployee, mockRequests } from '@/lib/mock-data'
+import { getRepairRequests, getEmployee, DEV_LINE_UID } from '@/lib/db'
 import { StatusPill } from '@/components/StatusPill'
 import { WORK_TYPE_CONFIG } from '@/lib/mock-data'
 
-export default function HomePage() {
-  const recent = mockRequests.slice(0, 2)
+export default async function HomePage() {
+  const [employee, requests] = await Promise.all([
+    getEmployee(DEV_LINE_UID),
+    getRepairRequests(DEV_LINE_UID),
+  ])
+
+  const displayName = employee?.displayName ?? 'คุณ'
+  const employeeCode = employee?.employeeCode ?? '—'
+  const recent = requests.slice(0, 2)
   const stats = {
-    pending: mockRequests.filter(r => r.status === 'pending').length,
-    in_progress: mockRequests.filter(r => r.status === 'in_progress').length,
-    done: mockRequests.filter(r => r.status === 'done').length,
+    pending: requests.filter(r => r.status === 'pending').length,
+    in_progress: requests.filter(r => r.status === 'in_progress').length,
+    done: requests.filter(r => r.status === 'done').length,
   }
 
   return (
@@ -34,11 +39,11 @@ export default function HomePage() {
         {/* Welcome */}
         <div>
           <div style={{ fontSize: '22px', fontWeight: 800, color: '#111827', letterSpacing: '-0.01em' }}>
-            สวัสดี, {mockEmployee.displayName.split(' ')[0]} 👋
+            สวัสดี, {displayName.split(' ')[0]} 👋
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '7px' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: '12px', fontWeight: 600, color: '#6B7280', background: '#fff', border: '1px solid #E5E7EB', padding: '4px 10px', borderRadius: '999px', fontFamily: 'var(--mono)' }}>
-              {mockEmployee.employeeCode}
+              {employeeCode}
             </span>
             <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: '12px', fontWeight: 600, color: '#6B7280', background: '#fff', border: '1px solid #E5E7EB', padding: '4px 10px', borderRadius: '999px' }}>
               แผนก IT
@@ -102,28 +107,34 @@ export default function HomePage() {
             <span style={{ fontSize: '16px', fontWeight: 800, color: '#111827' }}>งานล่าสุดของฉัน</span>
             <Link href="/my-requests" style={{ fontSize: '13px', fontWeight: 600, color: '#1A56DB', textDecoration: 'none' }}>ดูทั้งหมด</Link>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {recent.map(r => {
-              const firstType = r.types[0]
-              const cfg = WORK_TYPE_CONFIG[firstType]
-              return (
-                <Link key={r.ticketNo} href="/my-requests" style={{ textDecoration: 'none' }}>
-                  <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '14px', padding: '13px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 1px 2px rgba(17,24,39,.04)' }}>
-                    <span style={{ width: '40px', height: '40px', borderRadius: '11px', background: cfg.bg, display: 'grid', placeItems: 'center', fontSize: '19px', flex: '0 0 40px' }}>
-                      {cfg.emoji}
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '12px', color: '#9CA3AF', fontFamily: 'var(--mono)', fontWeight: 600 }}>{r.ticketNo}</div>
-                      <div style={{ fontSize: '13.5px', color: '#374151', fontWeight: 600, marginTop: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {r.building} · ชั้น {r.floor} · {r.room}
+          {recent.length === 0 ? (
+            <div style={{ fontSize: '14px', color: '#9CA3AF', textAlign: 'center', padding: '24px 0', fontWeight: 600 }}>
+              ยังไม่มีรายการแจ้งซ่อม
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {recent.map(r => {
+                const firstType = r.types[0]
+                const cfg = WORK_TYPE_CONFIG[firstType]
+                return (
+                  <Link key={r.ticketNo} href="/my-requests" style={{ textDecoration: 'none' }}>
+                    <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '14px', padding: '13px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 1px 2px rgba(17,24,39,.04)' }}>
+                      <span style={{ width: '40px', height: '40px', borderRadius: '11px', background: cfg.bg, display: 'grid', placeItems: 'center', fontSize: '19px', flex: '0 0 40px' }}>
+                        {cfg.emoji}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '12px', color: '#9CA3AF', fontFamily: 'var(--mono)', fontWeight: 600 }}>{r.ticketNo}</div>
+                        <div style={{ fontSize: '13.5px', color: '#374151', fontWeight: 600, marginTop: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {r.building} · ชั้น {r.floor} · {r.room}
+                        </div>
                       </div>
+                      <StatusPill status={r.status} />
                     </div>
-                    <StatusPill status={r.status} />
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

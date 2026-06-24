@@ -77,9 +77,27 @@ export default function RepairPage() {
 
   const step1Valid = building && floor && room && types.length > 0
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    router.push('/success')
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ building, floor, room, types, urgency, description, preferredTime, photos }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        alert('เกิดข้อผิดพลาด: ' + (err.error ?? res.statusText))
+        return
+      }
+      const data = await res.json()
+      router.push(`/success?ticket=${data.ticketNo}`)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -340,7 +358,7 @@ export default function RepairPage() {
                 cursor: 'pointer',
               }}
             >
-              <Send size={18} strokeWidth={2.1} /> ส่งคำร้อง
+              <Send size={18} strokeWidth={2.1} /> {submitting ? 'กำลังส่ง...' : 'ส่งคำร้อง'}
             </button>
           )}
         </div>
