@@ -1,8 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { mockRequests } from '@/lib/mock-data'
 import { RepairRequest, ActiveFilter } from '@/lib/types'
 import { JobCard } from '@/components/JobCard'
 
@@ -53,7 +52,15 @@ function EmptyState() {
 
 export default function MyRequestsPage() {
   const [filter, setFilter] = useState<ActiveFilter>('all')
-  const [requests, setRequests] = useState<RepairRequest[]>(mockRequests)
+  const [requests, setRequests] = useState<RepairRequest[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/requests')
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setRequests(data) })
+      .finally(() => setLoading(false))
+  }, [])
 
   const filtered = requests.filter(r => {
     if (filter === 'all') return true
@@ -62,8 +69,21 @@ export default function MyRequestsPage() {
     return true
   })
 
-  const handleRate = (ticketNo: string, rating: number) => {
+  const handleRate = async (ticketNo: string, rating: number) => {
     setRequests(prev => prev.map(r => r.ticketNo === ticketNo ? { ...r, rating } : r))
+    await fetch('/api/requests', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticketNo, rating }),
+    })
+  }
+
+  if (loading) {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ fontSize: '14px', color: '#9CA3AF', fontWeight: 600 }}>กำลังโหลด...</span>
+      </div>
+    )
   }
 
   return (

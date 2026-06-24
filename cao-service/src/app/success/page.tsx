@@ -2,8 +2,26 @@
 
 import Link from 'next/link'
 import { ClipboardList } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
+
+function SuccessContent() {
+  const params = useSearchParams()
+  const ticketNo = params.get('ticket') ?? 'CAO-????-????'
+  return (
+    <SuccessView ticketNo={ticketNo} />
+  )
+}
 
 export default function SuccessPage() {
+  return (
+    <Suspense>
+      <SuccessContent />
+    </Suspense>
+  )
+}
+
+function SuccessView({ ticketNo }: { ticketNo: string }) {
   return (
     <div className="scrollbar-hide" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 22px 20px' }}>
       {/* Checkmark */}
@@ -38,7 +56,7 @@ export default function SuccessPage() {
       {/* Ticket chip */}
       <div style={{ marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '7px', background: '#EFF4FE', border: '1px solid #D5E2FB', padding: '8px 16px', borderRadius: '999px' }}>
         <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 600 }}>เลขที่</span>
-        <span style={{ fontSize: '16px', fontWeight: 600, color: '#1A56DB', fontFamily: 'var(--mono)' }}>CAO-2024-0042</span>
+        <span style={{ fontSize: '16px', fontWeight: 600, color: '#1A56DB', fontFamily: 'var(--mono)' }}>{ticketNo}</span>
       </div>
 
       {/* Summary card */}
