@@ -79,12 +79,13 @@ export default function RepairPage() {
   }
 
   const step1Valid = building && floor && room && types.length > 0
+  const step2Valid = description.trim().length > 0
 
   const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!profile) return
+    if (!profile || !step2Valid || submitting) return
     setSubmitting(true)
     try {
       const res = await apiFetch(profile.lineUid, '/api/requests', {
@@ -343,12 +344,13 @@ export default function RepairPage() {
           ) : (
             <button
               type="submit"
+              disabled={!step2Valid || submitting}
               style={{
                 width: '100%',
                 height: '52px',
                 border: 'none',
                 borderRadius: '14px',
-                background: '#1A56DB',
+                background: step2Valid && !submitting ? '#1A56DB' : '#9CA3AF',
                 color: '#fff',
                 fontSize: '16px',
                 fontWeight: 700,
@@ -357,8 +359,8 @@ export default function RepairPage() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                boxShadow: '0 10px 22px -10px rgba(26,86,219,.6)',
-                cursor: 'pointer',
+                boxShadow: step2Valid && !submitting ? '0 10px 22px -10px rgba(26,86,219,.6)' : 'none',
+                cursor: step2Valid && !submitting ? 'pointer' : 'not-allowed',
               }}
             >
               <Send size={18} strokeWidth={2.1} /> {submitting ? 'กำลังส่ง...' : 'ส่งคำร้อง'}
