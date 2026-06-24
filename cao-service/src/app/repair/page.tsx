@@ -6,6 +6,8 @@ import { ChevronLeft, ArrowRight, Send, Camera, X, Zap, Clock } from 'lucide-rea
 import { WorkType, UrgencyLevel, PreferredTime } from '@/lib/types'
 import { TypeChip } from '@/components/TypeChip'
 import { BUILDINGS, FLOORS, ALL_WORK_TYPES } from '@/lib/mock-data'
+import { useLiff } from '@/lib/liff'
+import { apiFetch } from '@/lib/api'
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -61,6 +63,7 @@ const URGENCY_CONFIG: Record<UrgencyLevel, { emoji: string; label: string; borde
 
 export default function RepairPage() {
   const router = useRouter()
+  const { profile } = useLiff()
   const [step, setStep] = useState<1 | 2>(1)
   const [building, setBuilding] = useState('')
   const [floor, setFloor] = useState('')
@@ -81,11 +84,11 @@ export default function RepairPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!profile) return
     setSubmitting(true)
     try {
-      const res = await fetch('/api/requests', {
+      const res = await apiFetch(profile.lineUid, '/api/requests', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ building, floor, room, types, urgency, description, preferredTime, photos }),
       })
       if (!res.ok) {

@@ -1,16 +1,32 @@
+'use client'
+
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { getRepairRequests, getEmployee, DEV_LINE_UID } from '@/lib/db'
 import { StatusPill } from '@/components/StatusPill'
 import { WORK_TYPE_CONFIG } from '@/lib/mock-data'
+import { useLiff } from '@/lib/liff'
+import { apiFetch } from '@/lib/api'
+import { RepairRequest, Employee } from '@/lib/types'
 
-export default async function HomePage() {
-  const [employee, requests] = await Promise.all([
-    getEmployee(DEV_LINE_UID),
-    getRepairRequests(DEV_LINE_UID),
-  ])
+export default function HomePage() {
+  const { profile } = useLiff()
+  const [employee, setEmployee] = useState<Employee | null>(null)
+  const [requests, setRequests] = useState<RepairRequest[]>([])
 
-  const displayName = employee?.displayName ?? 'คุณ'
+  useEffect(() => {
+    if (!profile) return
+    Promise.all([
+      apiFetch(profile.lineUid, '/api/employees').then(r => r.ok ? r.json() : null),
+      apiFetch(profile.lineUid, '/api/requests').then(r => r.json()),
+    ]).then(([emp, reqs]) => {
+      setEmployee(emp)
+      if (Array.isArray(reqs)) setRequests(reqs)
+    })
+  }, [profile])
+
+  const displayName = employee?.displayName ?? profile?.displayName ?? 'คุณ'
   const employeeCode = employee?.employeeCode ?? '—'
+  const avatarUrl = employee?.lineAvatar ?? profile?.pictureUrl ?? null
   const recent = requests.slice(0, 2)
   const stats = {
     pending: requests.filter(r => r.status === 'pending').length,
@@ -26,11 +42,16 @@ export default async function HomePage() {
           <span style={{ width: '30px', height: '30px', borderRadius: '9px', background: '#1A56DB', display: 'grid', placeItems: 'center', fontSize: '15px' }}>🔧</span>
           <span style={{ fontSize: '16px', fontWeight: 800, color: '#111827', letterSpacing: '-0.01em' }}>CAO Service</span>
         </div>
-        <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(150deg,#DCE7FB,#AFC6F0)', display: 'grid', placeItems: 'center', boxShadow: '0 0 0 2px #fff, 0 0 0 3px #E5E7EB' }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B68C4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="8" r="4" />
-            <path d="M5.5 21a6.5 6.5 0 0 1 13 0" />
-          </svg>
+        <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(150deg,#DCE7FB,#AFC6F0)', display: 'grid', placeItems: 'center', boxShadow: '0 0 0 2px #fff, 0 0 0 3px #E5E7EB', overflow: 'hidden' }}>
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B68C4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M5.5 21a6.5 6.5 0 0 1 13 0" />
+            </svg>
+          )}
         </div>
       </div>
 
@@ -44,9 +65,6 @@ export default async function HomePage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '7px' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: '12px', fontWeight: 600, color: '#6B7280', background: '#fff', border: '1px solid #E5E7EB', padding: '4px 10px', borderRadius: '999px', fontFamily: 'var(--mono)' }}>
               {employeeCode}
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: '12px', fontWeight: 600, color: '#6B7280', background: '#fff', border: '1px solid #E5E7EB', padding: '4px 10px', borderRadius: '999px' }}>
-              แผนก IT
             </span>
           </div>
         </div>
@@ -114,8 +132,7 @@ export default async function HomePage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {recent.map(r => {
-                const firstType = r.types[0]
-                const cfg = WORK_TYPE_CONFIG[firstType]
+                const cfg = WORK_TYPE_CONFIG[r.types[0]]
                 return (
                   <Link key={r.ticketNo} href="/my-requests" style={{ textDecoration: 'none' }}>
                     <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '14px', padding: '13px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 1px 2px rgba(17,24,39,.04)' }}>

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { IBM_Plex_Mono } from 'next/font/google'
+import { LiffProvider } from '@/lib/liff'
 import './globals.css'
 
 const ibmPlexMono = IBM_Plex_Mono({
@@ -17,9 +18,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="th" className={ibmPlexMono.variable}>
       <body className="min-h-screen" style={{ background: 'var(--surface)' }}>
-        <div className="mx-auto max-w-[390px] min-h-screen flex flex-col">
-          {children}
-        </div>
+        <LiffProvider>
+          <div className="mx-auto max-w-[390px] min-h-screen flex flex-col">
+            {children}
+          </div>
+        </LiffProvider>
       </body>
     </html>
   )

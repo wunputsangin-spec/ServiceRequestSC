@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { RepairRequest, ActiveFilter } from '@/lib/types'
 import { JobCard } from '@/components/JobCard'
+import { useLiff } from '@/lib/liff'
+import { apiFetch } from '@/lib/api'
 
 const FILTERS: { key: ActiveFilter; label: string }[] = [
   { key: 'all', label: 'ทั้งหมด' },
@@ -51,16 +53,18 @@ function EmptyState() {
 }
 
 export default function MyRequestsPage() {
+  const { profile } = useLiff()
   const [filter, setFilter] = useState<ActiveFilter>('all')
   const [requests, setRequests] = useState<RepairRequest[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/requests')
+    if (!profile) return
+    apiFetch(profile.lineUid, '/api/requests')
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setRequests(data) })
       .finally(() => setLoading(false))
-  }, [])
+  }, [profile])
 
   const filtered = requests.filter(r => {
     if (filter === 'all') return true
@@ -71,11 +75,12 @@ export default function MyRequestsPage() {
 
   const handleRate = async (ticketNo: string, rating: number) => {
     setRequests(prev => prev.map(r => r.ticketNo === ticketNo ? { ...r, rating } : r))
-    await fetch('/api/requests', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticketNo, rating }),
-    })
+    if (profile) {
+      await apiFetch(profile.lineUid, '/api/requests', {
+        method: 'PATCH',
+        body: JSON.stringify({ ticketNo, rating }),
+      })
+    }
   }
 
   if (loading) {

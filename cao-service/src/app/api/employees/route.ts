@@ -1,13 +1,14 @@
-import { getEmployee, upsertEmployee, DEV_LINE_UID } from '@/lib/db'
+import { getEmployee, upsertEmployee } from '@/lib/db'
 
-function getLineUid(_req: Request): string {
-  return DEV_LINE_UID
+function getLineUid(req: Request): string | null {
+  return req.headers.get('x-line-uid')
 }
 
-// GET /api/employees/me
+// GET /api/employees
 export async function GET(req: Request) {
   try {
     const lineUid = getLineUid(req)
+    if (!lineUid) return Response.json(null, { status: 401 })
     const employee = await getEmployee(lineUid)
     if (!employee) return Response.json(null, { status: 404 })
     return Response.json(employee)
@@ -20,6 +21,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const lineUid = getLineUid(req)
+    if (!lineUid) return Response.json({ error: 'ไม่ได้ login' }, { status: 401 })
     const body = await req.json()
     const employee = await upsertEmployee(lineUid, body)
     return Response.json(employee, { status: 201 })

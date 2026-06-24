@@ -1,14 +1,14 @@
-import { getRepairRequests, createRepairRequest, rateRepairRequest, getEmployee, DEV_LINE_UID } from '@/lib/db'
+import { getRepairRequests, createRepairRequest, rateRepairRequest, getEmployee } from '@/lib/db'
 
-// Phase 4: แทน DEV_LINE_UID ด้วย LINE userId จาก JWT
-function getLineUid(_req: Request): string {
-  return DEV_LINE_UID
+function getLineUid(req: Request): string | null {
+  return req.headers.get('x-line-uid')
 }
 
 // GET /api/requests
 export async function GET(req: Request) {
   try {
     const lineUid = getLineUid(req)
+    if (!lineUid) return Response.json({ error: 'ไม่ได้ login' }, { status: 401 })
     const data = await getRepairRequests(lineUid)
     return Response.json(data)
   } catch (err) {
@@ -20,6 +20,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const lineUid = getLineUid(req)
+    if (!lineUid) return Response.json({ error: 'ไม่ได้ login' }, { status: 401 })
+
     const employee = await getEmployee(lineUid)
     if (!employee) return Response.json({ error: 'ยังไม่ได้ลงทะเบียน' }, { status: 401 })
 
@@ -39,6 +41,7 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   try {
     const lineUid = getLineUid(req)
+    if (!lineUid) return Response.json({ error: 'ไม่ได้ login' }, { status: 401 })
     const { ticketNo, rating } = await req.json()
     await rateRepairRequest(lineUid, ticketNo, rating)
     return Response.json({ ok: true })

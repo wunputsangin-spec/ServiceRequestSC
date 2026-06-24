@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight } from 'lucide-react'
 import { BUILDINGS } from '@/lib/mock-data'
+import { useLiff } from '@/lib/liff'
+import { apiFetch } from '@/lib/api'
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -30,17 +32,41 @@ const inputStyle: React.CSSProperties = {
 
 export default function RegisterPage() {
   const router = useRouter()
+  const { profile } = useLiff()
+  const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({
-    name: 'สมชาย ใจดี',
+    name: profile?.displayName ?? '',
     employeeCode: '',
     building: 'Singha Complex',
     floor: '',
     phone: '',
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    router.push('/home')
+    if (!profile) return
+    setSubmitting(true)
+    try {
+      const res = await apiFetch(profile.lineUid, '/api/employees', {
+        method: 'POST',
+        body: JSON.stringify({
+          displayName: form.name,
+          lineAvatar: profile.pictureUrl,
+          employeeCode: form.employeeCode,
+          building: form.building,
+          floor: form.floor,
+          phone: form.phone,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        alert('เกิดข้อผิดพลาด: ' + (err.error ?? res.statusText))
+        return
+      }
+      router.push('/home')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -60,10 +86,15 @@ export default function RegisterPage() {
               overflow: 'hidden',
             }}
           >
-            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#3B68C4" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="8" r="4" />
-              <path d="M5.5 21a6.5 6.5 0 0 1 13 0" />
-            </svg>
+            {profile?.pictureUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profile.pictureUrl} alt="LINE avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#3B68C4" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M5.5 21a6.5 6.5 0 0 1 13 0" />
+              </svg>
+            )}
           </div>
           <span
             style={{
@@ -86,7 +117,7 @@ export default function RegisterPage() {
           </span>
         </div>
         <div style={{ fontSize: '13px', color: '#9CA3AF', fontWeight: 500 }}>
-          เชื่อมต่อจาก LINE · Somchai J.
+          เชื่อมต่อจาก LINE · {profile?.displayName ?? '...'}
         </div>
       </div>
 
@@ -222,7 +253,7 @@ export default function RegisterPage() {
             cursor: 'pointer',
           }}
         >
-          ลงทะเบียน
+          {submitting ? 'กำลังบันทึก...' : 'ลงทะเบียน'}
           <ArrowRight size={19} strokeWidth={2.2} />
         </button>
       </form>
