@@ -173,6 +173,26 @@ class MockStore {
     })
   }
 
+  /* Manager: set/replace assignees on a job (initial assign or edit).
+     Diffs against current assignees and adjusts each tech's load. */
+  setAssignees(id: string, techIds: string[]) {
+    const job = this.getJob(id)
+    if (!job) return
+    const before = job.assignees
+    const added = techIds.filter(t => !before.includes(t))
+    const removed = before.filter(t => !techIds.includes(t))
+    added.forEach(tid => {
+      const t = this.techs.find(t => t.id === tid)
+      if (t) { t.activeJobs++; t.busy = t.activeJobs >= 3 }
+    })
+    removed.forEach(tid => {
+      const t = this.techs.find(t => t.id === tid)
+      if (t) { t.activeJobs = Math.max(0, t.activeJobs - 1); t.busy = t.activeJobs >= 3 }
+    })
+    const nextStatus = job.status === 'approved' && techIds.length > 0 ? 'assigned' : job.status
+    this.updateJob(id, { assignees: techIds, status: nextStatus })
+  }
+
   startJob(id: string) { this.updateJob(id, { status: 'in_progress' }) }
 
   closeJob(id: string, closeNote: string, beforePhotos: string[], afterPhotos: string[]) {
