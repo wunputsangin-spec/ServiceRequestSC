@@ -1,65 +1,119 @@
 @import "tailwindcss";
 
-:root {
-  --blue: #1A56DB;
-  --blue-dark: #1542AB;
-  --blue-50: #EFF4FE;
-  --blue-border: #D5E2FB;
-  --surface: #F8FAFF;
-  --card: #FFFFFF;
-  --success: #16A34A;
-  --success-light: #F0FBF4;
-  --success-border: #C5EBD3;
-  --warn: #D97706;
-  --warn-light: #FFFBEB;
-  --danger: #DC2626;
-  --t1: #111827;
-  --t2: #6B7280;
-  --t3: #9CA3AF;
-  --label: #374151;
-  --border: #E5E7EB;
-  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+/* ─── Dark Luxe Design Tokens ─────────────────────────────────────── */
+@theme {
+  --font-sans: var(--font-anuphan), 'Noto Sans Thai', sans-serif;
+
+  /* Brand gold */
+  --color-gold:      #DDB056;
+  --color-gold-soft: #E8C77A;
+  --color-gold-deep: #C2933E;
+  --color-gold-on:   #161310;
+
+  /* Backgrounds */
+  --color-bg:        #0f1012;
+  --color-surface:   #16181c;
+  --color-surface-2: #1d1f24;
+  --color-card:      #1e2126;
+  --color-card-hi:   #242830;
+
+  /* Text */
+  --color-txt:   #E8EAF0;
+  --color-txt-2: #B6B9C0;
+  --color-txt-3: #80848D;
+
+  /* Borders */
+  --color-line:   #2a2d34;
+  --color-line-2: #32363f;
+
+  /* Status */
+  --color-st-pending:  #B9933B;
+  --color-st-accepted: #4F8DD6;
+  --color-st-assigned: #46BFA6;
+  --color-st-progress: #E0902E;
+  --color-st-done:     #43B581;
+  --color-st-urgent:   #E15B4C;
+
+  /* Category */
+  --color-cat-electric:  #E0902E;
+  --color-cat-plumbing:  #4F8DD6;
+  --color-cat-aircon:    #46BFA6;
+  --color-cat-furniture: #C58BE0;
+  --color-cat-meeting:   #DDB056;
+  --color-cat-other:     #8A8F99;
 }
 
-* {
-  box-sizing: border-box;
+/* ─── CSS Custom Properties (for inline styles & shadows) ─────────── */
+:root {
+  color-scheme: dark;
+
+  --gold:      #DDB056;
+  --gold-soft: #E8C77A;
+  --gold-deep: #C2933E;
+  --gold-on:   #161310;
+  --tint-gold: color-mix(in srgb, #DDB056 14%, transparent);
+  --gold-glow: 0 8px 24px -8px rgba(221,176,86,.5);
+
+  --bg:        #0f1012;
+  --surface:   #16181c;
+  --surface-2: #1d1f24;
+  --card:      #1e2126;
+  --card-hi:   #242830;
+
+  --txt:   #E8EAF0;
+  --txt-2: #B6B9C0;
+  --txt-3: #80848D;
+
+  --line:   #2a2d34;
+  --line-2: #32363f;
+
+  --shadow-card: 0 4px 24px -8px rgba(0,0,0,.45);
+
+  --st-pending:  #B9933B;
+  --st-accepted: #4F8DD6;
+  --st-assigned: #46BFA6;
+  --st-progress: #E0902E;
+  --st-done:     #43B581;
+  --st-urgent:   #E15B4C;
+
+  --font: var(--font-anuphan, 'Noto Sans Thai', sans-serif);
 }
+
+* { box-sizing: border-box; }
 
 body {
-  background: var(--surface);
-  color: var(--t1);
-  font-family: -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', 'Noto Sans Thai', sans-serif;
+  background: var(--bg);
+  color: var(--txt);
+  font-family: var(--font);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.font-mono-thai {
-  font-family: var(--mono);
+/* Number class — monospace numerals */
+.num { font-variant-numeric: tabular-nums; }
+
+/* Scrollbar hide */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ─── Animations ───────────────────────────────────────────────────── */
+@keyframes popin {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes toastin {
+  from { opacity: 0; transform: translateX(-50%) translateY(14px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideup {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
 }
 
-@keyframes ping-slow {
-  0% { transform: scale(0.8); opacity: 0.55; }
-  70%, 100% { transform: scale(2); opacity: 0; }
-}
-
-@keyframes pop-in {
-  0% { transform: scale(0.6); opacity: 0; }
-  60% { transform: scale(1.08); }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.animate-ping-slow {
-  animation: ping-slow 2.4s ease-out infinite;
-}
-
-.animate-pop-in {
-  animation: pop-in 0.5s ease-out both;
-}
-
-/* Hide scrollbar */
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
+.animate-popin   { animation: popin   .22s ease both; }
+.animate-fadein  { animation: fadein  .18s ease both; }
+.animate-slideup { animation: slideup .22s ease both; }

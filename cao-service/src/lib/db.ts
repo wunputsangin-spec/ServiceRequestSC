@@ -15,13 +15,17 @@ export async function getEmployee(lineUid: string): Promise<Employee | null> {
     .single()
   if (!data) return null
   return {
+    id: data.id ?? '',
+    lineUid: lineUid,
     displayName: data.display_name,
     lineAvatar: data.line_avatar,
     employeeCode: data.employee_code,
+    department: data.department ?? '',
     building: data.building,
     floor: data.floor,
     phone: data.phone,
     isRegistered: true,
+    role: (data.is_technician ? 'technician' : 'employee') as Employee['role'],
   }
 }
 
@@ -49,13 +53,17 @@ export async function upsertEmployee(lineUid: string, payload: {
     .single()
   if (error) throw new Error(error.message)
   return {
+    id: data.id ?? '',
+    lineUid: lineUid,
     displayName: data.display_name,
     lineAvatar: data.line_avatar,
     employeeCode: data.employee_code,
+    department: data.department ?? '',
     building: data.building,
     floor: data.floor,
     phone: data.phone,
     isRegistered: true,
+    role: (data.is_technician ? 'technician' : 'employee') as Employee['role'],
   }
 }
 
@@ -215,8 +223,10 @@ function rowToEmployee(row: Record<string, unknown>): Employee {
     building: row.building as string,
     floor: row.floor as string,
     phone: row.phone as string,
+    lineUid: row.line_uid as string,
+    department: (row.department as string) ?? '',
     isRegistered: true,
-    isTechnician: row.is_technician as boolean,
+    role: (row.is_technician ? 'technician' : 'employee') as Employee['role'],
   }
 }
 

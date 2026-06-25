@@ -183,7 +183,7 @@ export default function TechDetailPage() {
           <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #E5E7EB', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>โอนงานให้ช่าง</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {technicians.filter(t => t.isTechnician).map(t => (
+              {technicians.filter(t => t.role === 'technician').map(t => (
                 <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, border: selectedTech === t.id ? '2px solid #1A56DB' : '1px solid #E5E7EB', background: selectedTech === t.id ? '#EFF4FE' : '#fff', cursor: 'pointer' }}>
                   <input type="radio" name="tech" value={t.id} checked={selectedTech === t.id} onChange={() => setSelectedTech(t.id!)} style={{ display: 'none' }} />
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#374151', flex: 1 }}>👤 {t.displayName}</span>
