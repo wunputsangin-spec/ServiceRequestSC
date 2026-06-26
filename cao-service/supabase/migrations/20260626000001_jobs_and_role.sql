@@ -96,10 +96,10 @@ SELECT
   e.line_uid,
   e.display_name AS name,
   e.department   AS skill,
-  COUNT(j.id) FILTER (WHERE j.status NOT IN ('done') AND e.id = ANY(j.assignees))   AS active_jobs,
-  COUNT(j.id) FILTER (WHERE j.status = 'done'        AND e.id = ANY(j.assignees))   AS total_done,
-  COALESCE(AVG(j.rating) FILTER (WHERE j.rating IS NOT NULL AND e.id = ANY(j.assignees)), 0) AS avg_rating
+  COUNT(j.id) FILTER (WHERE j.status <> 'done' AND e.id::text = ANY(j.assignees)) AS active_jobs,
+  COUNT(j.id) FILTER (WHERE j.status = 'done'  AND e.id::text = ANY(j.assignees)) AS total_done,
+  COALESCE(AVG(j.rating) FILTER (WHERE j.rating IS NOT NULL AND e.id::text = ANY(j.assignees)), 0) AS avg_rating
 FROM employees e
-LEFT JOIN jobs j ON e.id = ANY(j.assignees)
+LEFT JOIN jobs j ON e.id::text = ANY(j.assignees)
 WHERE e.role = 'technician'
 GROUP BY e.id, e.line_uid, e.display_name, e.department;
