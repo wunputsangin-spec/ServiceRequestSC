@@ -1,7 +1,8 @@
 'use client'
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { Wrench, Inbox, History } from 'lucide-react'
-import { getStore } from '@/lib/store'
+import { useLiff } from '@/lib/liff'
+import { useEmployee, useTechJobStore } from '@/lib/useJobStore'
 import { PhoneShell, BottomNav, type NavTab } from '@/components/layout/PhoneShell'
 import { Toast } from '@/components/ui/BottomSheet'
 import { ChatOverlay } from '@/components/emp/ChatOverlay'
@@ -13,29 +14,50 @@ import { TechJobDetail } from './TechJobDetail'
 type Screen = 'tabs' | 'detail' | 'chat'
 
 export function TechApp() {
-  const store = getStore()
-  const [, force] = useState(0)
-  const bump = useCallback(() => force(v => v + 1), [])
+  const { ready, loggedIn, profile } = useLiff()
+  const { employee: tech, loading: techLoading } = useEmployee(profile?.lineUid ?? null)
+  const store = useTechJobStore(profile?.lineUid ?? null, tech?.id ?? null)
 
-  const tech = store.getCurrentTech()   // วิชัย มั่นคง (t1)
-  const [tab, setTab] = useState('jobs')
-  const [screen, setScreen] = useState<Screen>('tabs')
+  const [tab, setTab]             = useState('jobs')
+  const [screen, setScreen]       = useState<Screen>('tabs')
   const [openJobId, setOpenJobId] = useState<string | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast]         = useState<string | null>(null)
 
   const showToast = useCallback((msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(null), 1900)
   }, [])
 
-  const myJobs = useMemo(() => store.getJobsByTech(tech.id), [tech.id, store, force]) // eslint-disable-line react-hooks/exhaustive-deps
-  const queueJobs = useMemo(() => store.getApprovedJobs(), [store, force]) // eslint-disable-line react-hooks/exhaustive-deps
-  const doneJobs = myJobs.filter(j => j.status === 'done')
-  const allTechs = store.getTechs()
-  const openJob = openJobId ? store.getJob(openJobId) : null
-
-  const openJobDetail = (id: string) => { setOpenJobId(id); setScreen('detail') }
+  const openJobDetail = (id: string) => {
+    setOpenJobId(id)
+    setScreen('detail')
+    store.loadChats(id).catch(() => {/* no-op */})
+  }
   const goBack = () => { setScreen('tabs'); setOpenJobId(null) }
+  const openJob = openJobId ? [...store.myJobs, ...store.queueJobs].find(j => j.id === openJobId) ?? null : null
+
+  // ── Loading ──
+  if (!ready || techLoading || store.loading) {
+    return (
+      <PhoneShell liffTitle="CAO Service · ช่าง">
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid var(--gold)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
+        </div>
+      </PhoneShell>
+    )
+  }
+
+  // ── Tech identity for display — fallback to LIFF profile ──
+  const techMeta = {
+    id: tech?.id ?? '',
+    name: tech?.displayName ?? profile?.displayName ?? 'ช่าง',
+    skill: tech?.department ?? 'ช่างซ่อมบำรุง',
+    avgRating: 0,
+    totalDone: store.doneJobs.length,
+    activeJobs: store.myJobs.filter(j => j.status !== 'done').length,
+    initial: (tech?.displayName ?? 'ช่').charAt(0),
+    load: 0, busy: false,
+  }
 
   // ── Job detail ──
   if (screen === 'detail' && openJob) {
@@ -43,25 +65,22 @@ export function TechApp() {
       <PhoneShell liffTitle="รายละเอียดงาน">
         <TechJobDetail
           job={openJob}
-          tech={tech}
-          allTechs={allTechs}
+          tech={techMeta}
+          allTechs={store.allTechs}
           onBack={goBack}
-          onStart={() => {
-            store.startJob(openJob.id)
-            bump()
+          onStart={async () => {
+            await store.startJob(openJob.id).catch(() => {/* no-op */})
             showToast('เริ่มงานแล้ว')
           }}
-          onClose={(note, before, after) => {
-            store.closeJob(openJob.id, note, before, after)
-            bump()
+          onClose={async (note, before, after) => {
+            await store.closeJob(openJob.id, note, before, after).catch(() => {/* no-op */})
             goBack()
             showToast('ปิดงานเรียบร้อย')
           }}
-          onForward={(toTechId) => {
-            store.forwardJob(openJob.id, tech.id, toTechId)
-            bump()
+          onForward={async (toTechId) => {
+            await store.forwardJob(openJob.id, techMeta.id, toTechId).catch(() => {/* no-op */})
             goBack()
-            const toTech = allTechs.find(t => t.id === toTechId)
+            const toTech = store.allTechs.find(t => t.id === toTechId)
             showToast(`ส่งต่องานให้ ${toTech?.name ?? 'ช่าง'} แล้ว`)
           }}
           onOpenChat={() => setScreen('chat')}
@@ -78,12 +97,11 @@ export function TechApp() {
         <ChatOverlay
           job={openJob}
           onClose={() => setScreen('detail')}
-          onSend={(text) => {
-            store.sendChat(openJob.id, {
-              from: 'tech', senderId: tech.id, senderName: tech.name.split(' ')[0],
-              text, time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.',
-            })
-            bump()
+          onSend={async (text) => {
+            await store.sendChat(openJob.id, {
+              from: 'tech', senderId: techMeta.id,
+              senderName: techMeta.name.split(' ')[0], text,
+            }).catch(() => {/* no-op */})
           }}
         />
       </PhoneShell>
@@ -93,8 +111,8 @@ export function TechApp() {
   // ── Tabs ──
   const tabs: NavTab[] = [
     { key: 'jobs',    label: 'งานของฉัน', icon: <Wrench size={21} /> },
-    { key: 'queue',   label: 'คิวงาน',     icon: <Inbox size={21} />,   badge: queueJobs.length },
-    { key: 'history', label: 'ประวัติ',    icon: <History size={21} /> },
+    { key: 'queue',   label: 'คิวงาน',    icon: <Inbox size={21} />,   badge: store.queueJobs.length },
+    { key: 'history', label: 'ประวัติ',   icon: <History size={21} /> },
   ]
 
   return (
@@ -103,24 +121,27 @@ export function TechApp() {
       footer={<BottomNav tabs={tabs} active={tab} onTab={setTab} />}
     >
       {tab === 'jobs' && (
-        <MyJobsTab tech={tech} jobs={myJobs.filter(j => j.status !== 'done')} onOpenJob={openJobDetail} />
+        <MyJobsTab
+          tech={techMeta}
+          jobs={store.myJobs.filter(j => j.status !== 'done')}
+          onOpenJob={openJobDetail}
+        />
       )}
       {tab === 'queue' && (
         <QueueTab
-          jobs={queueJobs}
+          jobs={store.queueJobs}
           onOpenJob={openJobDetail}
-          onClaim={(jobId) => {
-            store.claimJob(jobId, tech.id)
-            bump()
+          onClaim={async (jobId) => {
+            await store.claimJob(jobId, techMeta.id).catch(() => {/* no-op */})
             showToast('รับงานแล้ว — ดูที่แท็บ "งานของฉัน"')
           }}
         />
       )}
       {tab === 'history' && (
         <HistoryTab
-          doneJobs={doneJobs}
-          avgRating={tech.avgRating}
-          totalDone={tech.totalDone}
+          doneJobs={store.doneJobs}
+          avgRating={techMeta.avgRating}
+          totalDone={techMeta.totalDone}
           onOpenJob={openJobDetail}
         />
       )}

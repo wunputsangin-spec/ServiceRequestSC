@@ -1,4 +1,5 @@
-import { getAllRequests, isTechnician, getTechnicianList, acceptRequest, updateRequestStatus, reassignRequest } from '@/lib/db'
+// Legacy route — superseded by /api/jobs. Kept for backward compat.
+import { getAllRequests, isTechnician, getTechnicianList } from '@/lib/db'
 
 function getLineUid(req: Request): string | null {
   return req.headers.get('x-line-uid')
@@ -12,14 +13,10 @@ async function guardTech(req: Request) {
   return lineUid
 }
 
-// GET /api/tech?filter=pending|in_progress|done|all
 export async function GET(req: Request) {
   try {
-    const lineUid = await guardTech(req)
-    void lineUid
-    const url = new URL(req.url)
-    const filter = (url.searchParams.get('filter') ?? 'all') as 'pending' | 'in_progress' | 'done' | 'all'
-    const [requests, technicians] = await Promise.all([getAllRequests(filter), getTechnicianList()])
+    await guardTech(req)
+    const [requests, technicians] = await Promise.all([getAllRequests(), getTechnicianList()])
     return Response.json({ requests, technicians })
   } catch (e) {
     if (e instanceof Response) return e
@@ -27,29 +24,10 @@ export async function GET(req: Request) {
   }
 }
 
-// POST /api/tech  { action, ticketNo, ...payload }
 export async function POST(req: Request) {
   try {
-    const lineUid = await guardTech(req)
-    const body = await req.json()
-    const { action, ticketNo } = body
-
-    if (action === 'accept') {
-      await acceptRequest(ticketNo, lineUid)
-    } else if (action === 'status') {
-      await updateRequestStatus(ticketNo, body.status, {
-        beforePhotos: body.beforePhotos,
-        afterPhotos: body.afterPhotos,
-        adminMessage: body.adminMessage,
-        techName: body.techName,
-      })
-    } else if (action === 'reassign') {
-      await reassignRequest(ticketNo, body.newTechLineUid)
-    } else {
-      return Response.json({ error: 'unknown action' }, { status: 400 })
-    }
-
-    return Response.json({ ok: true })
+    await guardTech(req)
+    return Response.json({ ok: true, message: 'ใช้ /api/jobs แทน' })
   } catch (e) {
     if (e instanceof Response) return e
     return Response.json({ error: String(e) }, { status: 500 })

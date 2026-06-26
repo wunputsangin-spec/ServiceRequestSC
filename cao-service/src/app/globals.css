@@ -117,3 +117,7 @@ body {
 .animate-popin   { animation: popin   .22s ease both; }
 .animate-fadein  { animation: fadein  .18s ease both; }
 .animate-slideup { animation: slideup .22s ease both; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

@@ -1,7 +1,8 @@
 'use client'
 import { useState, useCallback } from 'react'
 import { LayoutDashboard, Table2, Users } from 'lucide-react'
-import { getStore } from '@/lib/store'
+import { useLiff } from '@/lib/liff'
+import { useEmployee, useManagerJobStore } from '@/lib/useJobStore'
 import type { Job } from '@/lib/types'
 import { DesktopShell } from '@/components/layout/DesktopShell'
 import { Toast } from '@/components/ui/BottomSheet'
@@ -12,74 +13,73 @@ import { AssignDialog } from './AssignDialog'
 import { JobDrawer } from './JobDrawer'
 
 export function ManagerApp() {
-  const store = getStore()
-  const [, force] = useState(0)
-  const bump = useCallback(() => force(v => v + 1), [])
+  const { profile } = useLiff()
+  const { employee: manager } = useEmployee(profile?.lineUid ?? null)
+  const store = useManagerJobStore(profile?.lineUid ?? null)
 
-  const manager = store.getCurrentManager()
-  const [nav, setNav] = useState('overview')
+  const [nav, setNav]           = useState('overview')
   const [assignJob, setAssignJob] = useState<Job | null>(null)
-  const [drawerId, setDrawerId] = useState<string | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
+  const [drawerId, setDrawerId]   = useState<string | null>(null)
+  const [toast, setToast]         = useState<string | null>(null)
 
   const showToast = useCallback((msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(null), 1900)
   }, [])
 
-  const stats = store.getStats()
-  const jobs = store.getJobs()
-  const techs = store.getTechs()
-  const pending = store.getPendingJobs()
-  const toAssign = store.getApprovedJobs()
-  const active = store.getActiveJobs()
-  const drawerJob = drawerId ? store.getJob(drawerId) : null
+  const drawerJob = drawerId ? store.jobs.find(j => j.id === drawerId) ?? null : null
 
   const navItems = [
-    { key: 'overview', label: 'ภาพรวม', icon: <LayoutDashboard size={18} />, badge: pending.length },
-    { key: 'jobs', label: 'รายการแจ้งซ่อม', icon: <Table2 size={18} /> },
-    { key: 'team', label: 'ทีมช่าง', icon: <Users size={18} /> },
+    { key: 'overview', label: 'ภาพรวม', icon: <LayoutDashboard size={18} />, badge: store.pending.length },
+    { key: 'jobs',     label: 'รายการแจ้งซ่อม', icon: <Table2 size={18} /> },
+    { key: 'team',     label: 'ทีมช่าง', icon: <Users size={18} /> },
   ]
 
-  const approve = (id: string) => { store.approveJob(id); bump(); showToast('อนุมัติคำขอแล้ว') }
-  const confirmAssign = (techIds: string[]) => {
+  const approve = async (id: string) => {
+    await store.approveJob(id).catch(() => {/* no-op */})
+    showToast('อนุมัติคำขอแล้ว')
+  }
+
+  const confirmAssign = async (techIds: string[]) => {
     if (!assignJob) return
     const editing = assignJob.assignees.length > 0
-    store.setAssignees(assignJob.id, techIds)
-    bump()
+    await store.setAssignees(assignJob.id, techIds).catch(() => {/* no-op */})
     setAssignJob(null)
     showToast(editing ? 'อัปเดตช่างผู้รับผิดชอบแล้ว' : `มอบหมายช่าง ${techIds.length} คนแล้ว`)
   }
+
+  const managerName  = manager?.displayName  ?? profile?.displayName ?? 'ผู้จัดการ'
+  const managerTitle = manager?.department   ?? 'ฝ่ายอาคารและสิ่งแวดล้อม'
 
   return (
     <DesktopShell
       nav={navItems}
       active={nav}
       onNav={setNav}
-      managerName={manager.displayName}
-      managerTitle={manager.department}
+      managerName={managerName}
+      managerTitle={managerTitle}
     >
       {nav === 'overview' && (
         <OverviewPage
-          stats={stats}
-          pending={pending}
-          toAssign={toAssign}
-          active={active}
-          techs={techs}
+          stats={store.stats}
+          pending={store.pending}
+          toAssign={store.toAssign}
+          active={store.active}
+          techs={store.techs}
           onApprove={approve}
           onAssign={setAssignJob}
           onEdit={setAssignJob}
         />
       )}
       {nav === 'jobs' && (
-        <JobTablePage jobs={jobs} techs={techs} onOpen={(j) => setDrawerId(j.id)} />
+        <JobTablePage jobs={store.jobs} techs={store.techs} onOpen={(j) => setDrawerId(j.id)} />
       )}
-      {nav === 'team' && <TeamPage techs={techs} />}
+      {nav === 'team' && <TeamPage techs={store.techs} />}
 
       {assignJob && (
         <AssignDialog
           job={assignJob}
-          techs={techs}
+          techs={store.techs}
           onClose={() => setAssignJob(null)}
           onConfirm={confirmAssign}
         />
@@ -88,7 +88,7 @@ export function ManagerApp() {
       {drawerJob && (
         <JobDrawer
           job={drawerJob}
-          techs={techs}
+          techs={store.techs}
           onClose={() => setDrawerId(null)}
           onApprove={(id) => { approve(id) }}
           onAssign={(j) => { setDrawerId(null); setAssignJob(j) }}

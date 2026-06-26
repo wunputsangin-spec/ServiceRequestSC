@@ -1,7 +1,9 @@
 'use client'
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { Home, ClipboardList, Bell, User } from 'lucide-react'
-import { getStore } from '@/lib/store'
+import { useLiff } from '@/lib/liff'
+import { useEmployee, useEmpJobStore } from '@/lib/useJobStore'
+import { apiUpsertEmployee } from '@/lib/api'
 import type { Employee } from '@/lib/types'
 import { PhoneShell, BottomNav, type NavTab } from '@/components/layout/PhoneShell'
 import { Toast } from '@/components/ui/BottomSheet'
@@ -18,66 +20,62 @@ import { RegisterScreen } from './RegisterScreen'
 type Screen = 'tabs' | 'form' | 'detail' | 'chat'
 
 export function EmpApp() {
-  const store = getStore()
-  const [, force] = useState(0)
-  const bump = useCallback(() => force(v => v + 1), [])
+  const { ready, loggedIn, profile } = useLiff()
+  const { employee, setEmployee, loading: empLoading } = useEmployee(profile?.lineUid ?? null)
 
-  // Registration: start from seeded employee; "logout" clears it to show register.
-  const [employee, setEmployee] = useState<Employee | null>(() => store.getCurrentEmployee())
-  const [tab, setTab] = useState('home')
-  const [screen, setScreen] = useState<Screen>('tabs')
+  const store = useEmpJobStore(profile?.lineUid ?? null, employee?.id ?? null)
+
+  const [tab, setTab]             = useState('home')
+  const [screen, setScreen]       = useState<Screen>('tabs')
   const [openJobId, setOpenJobId] = useState<string | null>(null)
-  const [rating, setRating] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
+  const [rating, setRating]       = useState(false)
+  const [toast, setToast]         = useState<string | null>(null)
 
   const showToast = useCallback((msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(null), 1900)
   }, [])
 
-  const jobs = useMemo(
-    () => (employee ? store.getJobsByEmployee(employee.id) : []),
-    [employee, store, force], // eslint-disable-line react-hooks/exhaustive-deps
-  )
-  const techs = store.getTechs()
-  const notifications = employee ? store.getNotifications(employee.id) : []
-  const unread = store.getUnreadCount()
-  const openJob = openJobId ? store.getJob(openJobId) : null
+  const goBackToTabs = () => { setScreen('tabs'); setOpenJobId(null) }
+  const openJobDetail = (id: string) => {
+    setOpenJobId(id)
+    setScreen('detail')
+    // Lazy-load chats when opening job detail
+    store.loadChats(id).catch(() => {/* no-op */})
+  }
+  const openJob = openJobId ? store.jobs.find(j => j.id === openJobId) ?? null : null
 
-  // ── Register gate ──
-  if (!employee) {
+  // ── Loading ──
+  if (!ready || empLoading) {
     return (
-      <PhoneShell liffTitle="ลงทะเบียน">
-        <RegisterScreen
-          prefill={{ displayName: 'สมชาย ใจดี', lineAvatar: null }}
-          onRegister={(data) => {
-            const emp = store.getCurrentEmployee()
-            Object.assign(emp, data, { isRegistered: true })
-            setEmployee({ ...emp })
-            setTab('home')
-            showToast('ลงทะเบียนสำเร็จ')
-          }}
-        />
+      <PhoneShell liffTitle="CAO Service">
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
+          <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid var(--gold)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
+          <span style={{ fontSize: 13, color: 'var(--txt-3)' }}>กำลังโหลด...</span>
+        </div>
       </PhoneShell>
     )
   }
 
-  const goBackToTabs = () => { setScreen('tabs'); setOpenJobId(null) }
-  const openJobDetail = (id: string) => { setOpenJobId(id); setScreen('detail') }
-
-  // ── Overlay screens ──
-  if (screen === 'form') {
+  // ── Register gate ──
+  if (!loggedIn || !profile || !employee) {
     return (
-      <PhoneShell liffTitle="สร้างคำขอ">
-        <RequestForm
-          employee={employee}
-          onBack={goBackToTabs}
-          onSubmit={(payload) => {
-            const job = store.submitJob(payload)
-            bump()
-            setScreen('tabs')
-            setTab('jobs')
-            showToast(`ส่งคำขอแล้ว · ${job.code}`)
+      <PhoneShell liffTitle="ลงทะเบียน">
+        <RegisterScreen
+          prefill={{ displayName: profile?.displayName ?? '', lineAvatar: profile?.pictureUrl ?? null }}
+          onRegister={async (data) => {
+            try {
+              const emp = await apiUpsertEmployee(profile?.lineUid ?? '', {
+                ...data,
+                displayName: profile?.displayName ?? data.displayName ?? '',
+                lineAvatar: profile?.pictureUrl ?? null,
+              })
+              setEmployee(emp)
+              setTab('home')
+              showToast('ลงทะเบียนสำเร็จ')
+            } catch (err) {
+              showToast('เกิดข้อผิดพลาด: ' + String(err))
+            }
           }}
         />
         {toast && <Toast message={toast} visible />}
@@ -85,23 +83,46 @@ export function EmpApp() {
     )
   }
 
+  // ── Form ──
+  if (screen === 'form') {
+    return (
+      <PhoneShell liffTitle="สร้างคำขอ">
+        <RequestForm
+          employee={employee}
+          onBack={goBackToTabs}
+          onSubmit={async (payload) => {
+            try {
+              const job = await store.submitJob(payload)
+              setScreen('tabs')
+              setTab('jobs')
+              showToast(`ส่งคำขอแล้ว · ${job.code}`)
+            } catch {
+              showToast('ส่งคำขอไม่สำเร็จ กรุณาลองใหม่')
+            }
+          }}
+        />
+        {toast && <Toast message={toast} visible />}
+      </PhoneShell>
+    )
+  }
+
+  // ── Job detail ──
   if (screen === 'detail' && openJob) {
     return (
       <PhoneShell liffTitle="รายละเอียดงาน">
         <JobDetail
           job={openJob}
-          techs={techs}
+          techs={store.techs}
           onBack={goBackToTabs}
           onOpenChat={() => setScreen('chat')}
           onRate={() => setRating(true)}
         />
         <RatingSheet
           open={rating}
-          techNames={openJob.assignees.map(id => techs.find(t => t.id === id)?.name).filter(Boolean).join(', ')}
+          techNames={openJob.assignees.map(id => store.techs.find(t => t.id === id)?.name).filter(Boolean).join(', ')}
           onClose={() => setRating(false)}
-          onSubmit={(r, fb) => {
-            store.rateJob(openJob.id, r, fb)
-            bump()
+          onSubmit={async (r, fb) => {
+            await store.rateJob(openJob.id, r, fb).catch(() => {/* no-op */})
             setRating(false)
             showToast('ขอบคุณสำหรับคะแนน')
           }}
@@ -111,33 +132,32 @@ export function EmpApp() {
     )
   }
 
+  // ── Chat ──
   if (screen === 'chat' && openJob) {
     return (
       <PhoneShell liffTitle="แชท">
         <ChatOverlay
           job={openJob}
           onClose={() => setScreen('detail')}
-          onSend={(text) => {
-            store.sendChat(openJob.id, {
-              from: 'employee', senderId: employee.id, senderName: employee.displayName.split(' ')[0],
-              text, time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.',
-            })
-            bump()
+          onSend={async (text) => {
+            await store.sendChat(openJob.id, {
+              from: 'employee', senderId: employee.id, senderName: employee.displayName.split(' ')[0], text,
+            }).catch(() => {/* no-op */})
           }}
         />
       </PhoneShell>
     )
   }
 
-  // ── Tab screens ──
+  // ── Tabs ──
   const tabs: NavTab[] = [
-    { key: 'home', label: 'หน้าหลัก', icon: <Home size={21} /> },
-    { key: 'jobs', label: 'งานของฉัน', icon: <ClipboardList size={21} /> },
-    { key: 'noti', label: 'แจ้งเตือน', icon: <Bell size={21} />, badge: unread },
-    { key: 'profile', label: 'โปรไฟล์', icon: <User size={21} /> },
+    { key: 'home',    label: 'หน้าหลัก',  icon: <Home size={21} /> },
+    { key: 'jobs',    label: 'งานของฉัน', icon: <ClipboardList size={21} /> },
+    { key: 'noti',    label: 'แจ้งเตือน', icon: <Bell size={21} />, badge: store.unread },
+    { key: 'profile', label: 'โปรไฟล์',  icon: <User size={21} /> },
   ]
 
-  const doneCount = jobs.filter(j => j.status === 'done').length
+  const doneCount = store.jobs.filter(j => j.status === 'done').length
 
   return (
     <PhoneShell
@@ -147,18 +167,18 @@ export function EmpApp() {
       {tab === 'home' && (
         <HomeTab
           employee={employee}
-          jobs={jobs}
+          jobs={store.jobs}
           onNew={() => setScreen('form')}
           onOpenJob={openJobDetail}
           onSeeAll={() => setTab('jobs')}
         />
       )}
-      {tab === 'jobs' && <JobsTab jobs={jobs} onOpenJob={openJobDetail} />}
+      {tab === 'jobs' && <JobsTab jobs={store.jobs} onOpenJob={openJobDetail} />}
       {tab === 'noti' && (
         <NotiTab
-          notifications={notifications}
+          notifications={store.notifications}
           onOpenJob={openJobDetail}
-          onMarkAllRead={() => { store.markAllRead(employee.id); bump() }}
+          onMarkAllRead={() => store.markAllRead()}
         />
       )}
       {tab === 'profile' && (
