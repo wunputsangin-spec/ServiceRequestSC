@@ -83,8 +83,11 @@ ALTER TABLE jobs       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE job_chats  ENABLE ROW LEVEL SECURITY;
 
 -- Allow all via service_role (server-side API routes use SUPABASE_SECRET_KEY)
-CREATE POLICY IF NOT EXISTS "service_all_jobs"      ON jobs      USING (true) WITH CHECK (true);
-CREATE POLICY IF NOT EXISTS "service_all_job_chats" ON job_chats USING (true) WITH CHECK (true);
+-- DROP first so re-running migration is safe
+DROP POLICY IF EXISTS "service_all_jobs"      ON jobs;
+DROP POLICY IF EXISTS "service_all_job_chats" ON job_chats;
+CREATE POLICY "service_all_jobs"      ON jobs      USING (true) WITH CHECK (true);
+CREATE POLICY "service_all_job_chats" ON job_chats USING (true) WITH CHECK (true);
 
 -- ── Technician stats view (derived from jobs) ─────────────────────────────────
 CREATE OR REPLACE VIEW technician_stats AS
