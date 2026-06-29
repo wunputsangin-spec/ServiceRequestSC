@@ -1,10 +1,11 @@
 'use client'
-import { useState } from 'react'
-import { ArrowLeft, Camera, X, AlertTriangle, Check } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { ArrowLeft, Camera, X, AlertTriangle, Loader2 } from 'lucide-react'
 import type { Employee, JobType, JobCategory, Urgency, SlotTime, Job } from '@/lib/types'
 import { Field, SelectField, TextInput, TextArea } from '@/components/ui/Field'
 import { Btn } from '@/components/ui/Btn'
 import { CatBadge, catMeta } from './catMeta'
+import { apiUploadPhoto } from '@/lib/api'
 import { REPAIR_CAT_META, SERVICE_CAT_META, BUILDINGS, FLOORS, SLOT_OPTIONS } from '@/lib/constants'
 
 type SubmitPayload = Omit<Job, 'id' | 'code' | 'status' | 'assignees' | 'closeNote' | 'rating' | 'feedback' | 'beforePhotos' | 'afterPhotos' | 'chat' | 'createdAt' | 'updatedAt'>
@@ -34,6 +35,26 @@ export function RequestForm({ employee, onBack, onSubmit }: RequestFormProps) {
   const [slotDate, setSlotDate] = useState(DATE_OPTIONS[1])
   const [slotTime, setSlotTime] = useState<SlotTime>('morning')
   const [photos, setPhotos] = useState<string[]>([])
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    setUploading(true)
+    try {
+      const urls: string[] = []
+      for (const file of Array.from(files).slice(0, 4 - photos.length)) {
+        const url = await apiUploadPhoto(employee.lineUid, file, 'photos')
+        urls.push(url)
+      }
+      setPhotos(ph => [...ph, ...urls])
+    } catch {
+      alert('อัปโหลดรูปไม่สำเร็จ กรุณาลองใหม่')
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
 
   const catEntries = Object.entries(type === 'repair' ? REPAIR_CAT_META : SERVICE_CAT_META)
   const valid = title.trim() && floor && location.trim() && description.trim()
@@ -177,16 +198,21 @@ export function RequestForm({ employee, onBack, onSubmit }: RequestFormProps) {
           </div>
         </Field>
 
-        {/* Photos (mock) */}
-        <Field label="แนบรูปภาพ" hint="แตะเพื่อเพิ่มรูป (เดโม่ — จำลองการแนบไฟล์)">
+        {/* Photos */}
+        <Field label="แนบรูปภาพ" hint="แตะเพื่อถ่าย/เลือกรูป (สูงสุด 4 รูป)">
+          <input
+            ref={fileRef} type="file" accept="image/*" multiple
+            style={{ display: 'none' }}
+            onChange={e => handleFiles(e.target.files)}
+          />
           <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
             {photos.map((p, i) => (
               <div key={i} style={{
-                width: 64, height: 64, borderRadius: 12, position: 'relative',
+                width: 64, height: 64, borderRadius: 12, position: 'relative', overflow: 'hidden',
                 background: 'var(--surface-2)', border: '1px solid var(--line-2)',
-                display: 'grid', placeItems: 'center', color: 'var(--txt-3)', fontSize: 11,
               }}>
-                <Check size={20} color="var(--st-done)" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 <button onClick={() => setPhotos(ph => ph.filter((_, idx) => idx !== i))} style={{
                   position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%',
                   background: 'var(--st-urgent)', border: '2px solid var(--bg)', color: '#fff',
@@ -197,12 +223,12 @@ export function RequestForm({ employee, onBack, onSubmit }: RequestFormProps) {
               </div>
             ))}
             {photos.length < 4 && (
-              <button onClick={() => setPhotos(ph => [...ph, `photo-${ph.length + 1}.jpg`])} style={{
-                width: 64, height: 64, borderRadius: 12, cursor: 'pointer',
+              <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{
+                width: 64, height: 64, borderRadius: 12, cursor: uploading ? 'wait' : 'pointer',
                 background: 'var(--surface-2)', border: '1px dashed var(--line-2)',
                 display: 'grid', placeItems: 'center', color: 'var(--txt-3)',
               }}>
-                <Camera size={22} />
+                {uploading ? <Loader2 size={22} className="animate-spin" /> : <Camera size={22} />}
               </button>
             )}
           </div>

@@ -67,6 +67,7 @@ export function TechApp() {
           job={openJob}
           tech={techMeta}
           allTechs={store.allTechs}
+          lineUid={profile?.lineUid ?? ''}
           onBack={goBack}
           onStart={async () => {
             await store.startJob(openJob.id).catch(() => {/* no-op */})

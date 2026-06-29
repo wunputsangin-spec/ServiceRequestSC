@@ -15,6 +15,7 @@ interface TechJobDetailProps {
   job: Job
   tech: Technician
   allTechs: Technician[]
+  lineUid: string
   onBack: () => void
   onStart: () => void
   onClose: (note: string, before: string[], after: string[]) => void
@@ -49,7 +50,7 @@ function slotLabel(job: Job): string {
   return opt.time ? `${opt.label} · ${opt.time}` : opt.label
 }
 
-export function TechJobDetail({ job, tech, allTechs, onBack, onStart, onClose, onForward, onOpenChat }: TechJobDetailProps) {
+export function TechJobDetail({ job, tech, allTechs, lineUid, onBack, onStart, onClose, onForward, onOpenChat }: TechJobDetailProps) {
   const [showClose, setShowClose] = useState(false)
   const [showForward, setShowForward] = useState(false)
   const { label: catLabel } = catMeta(job.category)
@@ -203,6 +204,7 @@ export function TechJobDetail({ job, tech, allTechs, onBack, onStart, onClose, o
       <CloseJobSheet
         open={showClose}
         jobTitle={job.title}
+        lineUid={lineUid}
         onClose={() => setShowClose(false)}
         onSubmit={(note, before, after) => { setShowClose(false); onClose(note, before, after) }}
       />
