@@ -14,7 +14,9 @@ interface HomeTabProps {
 export function HomeTab({ employee, jobs, onNew, onOpenJob, onSeeAll }: HomeTabProps) {
   const active = jobs.filter(j => j.status !== 'done').length
   const done = jobs.filter(j => j.status === 'done').length
-  const recent = jobs.slice(0, 3)
+  // ซ่อนงานที่เสร็จและประเมินช่างแล้วออกจากหน้าแรก (ยังอยู่ในแท็บงานของฉัน)
+  const visible = jobs.filter(j => !(j.status === 'done' && j.rating != null))
+  const recent = visible.slice(0, 3)
 
   return (
     <div style={{ padding: '18px 16px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -79,7 +81,7 @@ export function HomeTab({ employee, jobs, onNew, onOpenJob, onSeeAll }: HomeTabP
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--txt)' }}>งานล่าสุดของฉัน</span>
-          {jobs.length > 3 && (
+          {visible.length > 3 && (
             <button onClick={onSeeAll} style={{ background: 'none', border: 'none', color: 'var(--gold)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
               ดูทั้งหมด
             </button>
