@@ -5,6 +5,7 @@ import type { Technician } from '@/lib/types'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Btn } from '@/components/ui/Btn'
 import { Avatar } from '@/components/ui/Avatar'
+import { Field, TextArea } from '@/components/ui/Field'
 
 interface ForwardSheetProps {
   open: boolean
@@ -12,16 +13,27 @@ interface ForwardSheetProps {
   currentTechId: string
   techs: Technician[]
   onClose: () => void
-  onForward: (techId: string) => void
+  onForward: (techId: string, reason: string) => void
 }
 
 export function ForwardSheet({ open, jobTitle, currentTechId, techs, onClose, onForward }: ForwardSheetProps) {
   const [selected, setSelected] = useState<string | null>(null)
+  const [reason, setReason] = useState('')
   const candidates = techs.filter(t => t.id !== currentTechId)
+  const reset = () => { setSelected(null); setReason('') }
 
   return (
-    <BottomSheet open={open} onClose={() => { setSelected(null); onClose() }} title="ส่งต่องาน" subtitle={jobTitle} maxWidth={390}>
+    <BottomSheet open={open} onClose={() => { reset(); onClose() }} title="ส่งต่องาน" subtitle={jobTitle} maxWidth={390}>
       <div style={{ padding: '14px 18px 8px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <Field label="เหตุผลการส่งต่อ" required hint="เช่น ต้องใช้ช่างเฉพาะทาง / อะไหล่ไม่พร้อม / งานเกินขอบเขต">
+          <TextArea
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            placeholder="อธิบายเหตุผลที่ต้องส่งต่อ…"
+            style={{ minHeight: 70 }}
+          />
+        </Field>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--txt-3)', marginTop: 2 }}>เลือกช่างที่จะรับงานต่อ</div>
         {candidates.map(t => {
           const active = selected === t.id
           return (
@@ -57,8 +69,8 @@ export function ForwardSheet({ open, jobTitle, currentTechId, techs, onClose, on
         <Btn
           variant="gold" size="lg" full
           style={{ marginTop: 4 }}
-          disabled={!selected}
-          onClick={() => { if (selected) { onForward(selected); setSelected(null) } }}
+          disabled={!selected || !reason.trim()}
+          onClick={() => { if (selected && reason.trim()) { onForward(selected, reason.trim()); reset() } }}
         >
           ยืนยันส่งต่อ
         </Btn>

@@ -148,12 +148,20 @@ export function useTechJobStore(lineUid: string | null, techId: string | null) {
     setMyJobs(prev => [...prev, job])
   }, [lineUid, allJobs]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const forwardJob = useCallback(async (id: string, fromTechId: string, toTechId: string) => {
+  const forwardJob = useCallback(async (id: string, fromTechId: string, toTechId: string, reason?: string, fromName?: string) => {
     const cur = allJobs.find(j => j.id === id)
     const assignees = [...(cur?.assignees ?? []).filter(a => a !== fromTechId), toTechId]
-    const job = await apiPatchJob(lineUid!, id, { assignees })
+    // reset เป็น 'assigned' ให้ช่างใหม่กดเริ่มเอง + trigger แจ้งเตือนช่างใหม่
+    const job = await apiPatchJob(lineUid!, id, { assignees, status: 'assigned' })
     updateJobLocal(id, job)
     setMyJobs(prev => prev.filter(j => j.id !== id))
+    // บันทึกเหตุผลการส่งต่อเป็นข้อความระบบในแชท
+    if (reason) {
+      await apiSendChat(lineUid!, id, {
+        from: 'system', senderId: fromTechId, senderName: 'ระบบ',
+        text: `🔄 ${fromName ?? 'ช่าง'} ส่งต่องานนี้ — เหตุผล: ${reason}`,
+      }).catch(() => {/* no-op */})
+    }
   }, [lineUid, allJobs]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const sendChat = useCallback(async (jobId: string, msg: {

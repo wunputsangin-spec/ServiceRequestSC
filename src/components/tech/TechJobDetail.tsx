@@ -19,7 +19,7 @@ interface TechJobDetailProps {
   onBack: () => void
   onStart: () => void
   onClose: (note: string, before: string[], after: string[]) => void
-  onForward: (toTechId: string) => void
+  onForward: (toTechId: string, reason: string) => void
   onOpenChat: () => void
 }
 
@@ -216,7 +216,7 @@ export function TechJobDetail({ job, tech, allTechs, lineUid, onBack, onStart, o
         currentTechId={tech.id}
         techs={allTechs}
         onClose={() => setShowForward(false)}
-        onForward={(tid) => { setShowForward(false); onForward(tid) }}
+        onForward={(tid, reason) => { setShowForward(false); onForward(tid, reason) }}
       />
     </div>
   )

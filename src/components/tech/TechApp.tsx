@@ -78,8 +78,8 @@ export function TechApp() {
             goBack()
             showToast('ปิดงานเรียบร้อย')
           }}
-          onForward={async (toTechId) => {
-            await store.forwardJob(openJob.id, techMeta.id, toTechId).catch(() => {/* no-op */})
+          onForward={async (toTechId, reason) => {
+            await store.forwardJob(openJob.id, techMeta.id, toTechId, reason, techMeta.name).catch(() => {/* no-op */})
             goBack()
             const toTech = store.allTechs.find(t => t.id === toTechId)
             showToast(`ส่งต่องานให้ ${toTech?.name ?? 'ช่าง'} แล้ว`)
