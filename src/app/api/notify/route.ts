@@ -52,10 +52,24 @@ export async function POST(req: Request) {
     }
 
     if (body.event === 'new_job') {
-      // Notify manager group — prefer admin setting, fallback to env
+      const msg = `🆕 มีงานใหม่เข้าคิว · ${body.jobCode}\n${body.jobTitle}\nเปิดแอปเพื่อกดรับงาน`
+
+      // แจ้งกลุ่มผู้จัดการ (ถ้าตั้งค่าไว้)
       const groupId = settingsGroupId || process.env.LINE_MANAGER_GROUP_ID
       if (groupId) {
-        await pushLine(groupId, `📋 คำขอใหม่ · ${body.jobCode}\n${body.jobTitle}\nกรุณาตรวจสอบและอนุมัติ`)
+        await pushLine(groupId, msg)
+      }
+
+      // แจ้งช่างทุกคนให้มากดรับงาน
+      const { createClient } = await import('@/lib/supabase/server')
+      const supabase = await createClient()
+      const { data: techs } = await supabase
+        .from('employees')
+        .select('line_uid')
+        .eq('role', 'technician')
+        .eq('suspended', false)
+      for (const row of techs ?? []) {
+        await pushLine(row.line_uid as string, msg)
       }
     }
 

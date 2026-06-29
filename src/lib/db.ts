@@ -143,6 +143,7 @@ export async function createJob(lineUid: string, payload: {
       requester_name: payload.requesterName,
       requester_line_uid: lineUid,
       photos: payload.photos ?? [],
+      status: 'approved',  // ข้ามขั้นอนุมัติ — เข้าคิวช่างทันที
     })
     .select()
     .single()
