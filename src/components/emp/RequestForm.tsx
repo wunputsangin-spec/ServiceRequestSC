@@ -1,6 +1,6 @@
 'use client'
-import { useState, useRef } from 'react'
-import { ArrowLeft, Camera, X, AlertTriangle, Loader2 } from 'lucide-react'
+import { useState, useRef, useMemo } from 'react'
+import { ArrowLeft, Camera, X, AlertTriangle, Loader2, Clock } from 'lucide-react'
 import type { Employee, JobType, JobCategory, Urgency, SlotTime, Job } from '@/lib/types'
 import { Field, SelectField, TextInput, TextArea } from '@/components/ui/Field'
 import { Btn } from '@/components/ui/Btn'
@@ -10,20 +10,29 @@ import { REPAIR_CAT_META, SERVICE_CAT_META, BUILDINGS, FLOORS, SLOT_OPTIONS } fr
 
 type SubmitPayload = Omit<Job, 'id' | 'code' | 'status' | 'assignees' | 'closeNote' | 'rating' | 'feedback' | 'beforePhotos' | 'afterPhotos' | 'chat' | 'createdAt' | 'updatedAt'>
 
+const TH_DAYS = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
+const TH_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
+
+// สร้างตัวเลือกวันที่ 7 วันถัดไปจากวันนี้ (พ.ศ.)
+function buildDateOptions(): string[] {
+  const opts: string[] = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date()
+    d.setDate(d.getDate() + i)
+    const prefix = i === 0 ? 'วันนี้' : i === 1 ? 'พรุ่งนี้' : TH_DAYS[d.getDay()]
+    opts.push(`${prefix} · ${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`)
+  }
+  return opts
+}
+
 interface RequestFormProps {
   employee: Employee
   onBack: () => void
   onSubmit: (payload: SubmitPayload) => void
 }
 
-const DATE_OPTIONS = [
-  'วันนี้ · 25 มิ.ย. 2569',
-  'พรุ่งนี้ · 26 มิ.ย. 2569',
-  'ศุกร์ · 27 มิ.ย. 2569',
-  'จันทร์ · 30 มิ.ย. 2569',
-]
-
 export function RequestForm({ employee, onBack, onSubmit }: RequestFormProps) {
+  const DATE_OPTIONS = useMemo(buildDateOptions, [])
   const [type, setType] = useState<JobType>('repair')
   const [category, setCategory] = useState<JobCategory>('electric')
   const [title, setTitle] = useState('')
@@ -32,7 +41,8 @@ export function RequestForm({ employee, onBack, onSubmit }: RequestFormProps) {
   const [location, setLocation] = useState('')
   const [urgency, setUrgency] = useState<Urgency>('normal')
   const [description, setDescription] = useState('')
-  const [slotDate, setSlotDate] = useState(DATE_OPTIONS[1])
+  const [scheduled, setScheduled] = useState(false)
+  const [slotDate, setSlotDate] = useState(DATE_OPTIONS[0])
   const [slotTime, setSlotTime] = useState<SlotTime>('morning')
   const [photos, setPhotos] = useState<{ url: string; preview: string }[]>([])
   const [uploading, setUploading] = useState(false)
@@ -73,7 +83,9 @@ export function RequestForm({ employee, onBack, onSubmit }: RequestFormProps) {
     if (!valid) return
     onSubmit({
       type, category, title: title.trim(), building, floor, location: location.trim(),
-      urgency, description: description.trim(), slotDate, slotTime,
+      urgency, description: description.trim(),
+      slotDate: scheduled ? slotDate : 'ไม่ระบุ',
+      slotTime: scheduled ? slotTime : 'custom',
       requesterId: employee.id, requesterName: employee.displayName,
       photos: photos.map(p => p.url).filter(Boolean),
     })
@@ -155,6 +167,11 @@ export function RequestForm({ employee, onBack, onSubmit }: RequestFormProps) {
           </Field>
         </div>
 
+        {/* Description */}
+        <Field label="รายละเอียด" required>
+          <TextArea value={description} onChange={e => setDescription(e.target.value)} placeholder="อธิบายปัญหาหรือสิ่งที่ต้องการให้ละเอียด…" />
+        </Field>
+
         {/* Urgency */}
         <Field label="ความเร่งด่วน">
           <div style={{ display: 'flex', gap: 10 }}>
@@ -178,30 +195,46 @@ export function RequestForm({ employee, onBack, onSubmit }: RequestFormProps) {
           </div>
         </Field>
 
-        {/* Description */}
-        <Field label="รายละเอียด" required>
-          <TextArea value={description} onChange={e => setDescription(e.target.value)} placeholder="อธิบายปัญหาหรือสิ่งที่ต้องการให้ละเอียด…" />
-        </Field>
-
-        {/* Date + slot */}
+        {/* Schedule toggle + date/slot */}
         <Field label="วัน-เวลาที่สะดวก">
-          <SelectField value={slotDate} onChange={setSlotDate} options={DATE_OPTIONS.map(d => ({ value: d, label: d }))} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9, marginTop: 10 }}>
-            {SLOT_OPTIONS.filter(o => o.value !== 'custom').map(o => {
-              const active = slotTime === o.value
-              return (
-                <button key={o.value} onClick={() => setSlotTime(o.value as SlotTime)} style={{
-                  padding: '11px 10px', borderRadius: 13, cursor: 'pointer', fontFamily: 'inherit',
-                  textAlign: 'left',
-                  background: active ? 'color-mix(in srgb, var(--gold) 14%, transparent)' : 'var(--surface-2)',
-                  border: `1px solid ${active ? 'var(--gold)' : 'var(--line-2)'}`,
+          {!scheduled ? (
+            <button onClick={() => setScheduled(true)} style={{
+              width: '100%', height: 48, borderRadius: 13, cursor: 'pointer', fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              fontSize: 14, fontWeight: 700, color: 'var(--gold)',
+              background: 'var(--surface-2)', border: '1px dashed color-mix(in srgb, var(--gold) 45%, var(--line-2))',
+            }}>
+              <Clock size={16} /> กำหนดเวลา
+            </button>
+          ) : (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                <button onClick={() => setScheduled(false)} style={{
+                  background: 'transparent', border: 'none', color: 'var(--txt-3)', cursor: 'pointer',
+                  fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4,
                 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: active ? 'var(--txt)' : 'var(--txt-2)' }}>{o.label}</div>
-                  <div className="num" style={{ fontSize: 11, color: 'var(--txt-3)', marginTop: 2 }}>{o.time}</div>
+                  <X size={13} /> ไม่ระบุเวลา
                 </button>
-              )
-            })}
-          </div>
+              </div>
+              <SelectField value={slotDate} onChange={setSlotDate} options={DATE_OPTIONS.map(d => ({ value: d, label: d }))} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9, marginTop: 10 }}>
+                {SLOT_OPTIONS.filter(o => o.value !== 'custom').map(o => {
+                  const active = slotTime === o.value
+                  return (
+                    <button key={o.value} onClick={() => setSlotTime(o.value as SlotTime)} style={{
+                      padding: '11px 10px', borderRadius: 13, cursor: 'pointer', fontFamily: 'inherit',
+                      textAlign: 'left',
+                      background: active ? 'color-mix(in srgb, var(--gold) 14%, transparent)' : 'var(--surface-2)',
+                      border: `1px solid ${active ? 'var(--gold)' : 'var(--line-2)'}`,
+                    }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: active ? 'var(--txt)' : 'var(--txt-2)' }}>{o.label}</div>
+                      <div className="num" style={{ fontSize: 11, color: 'var(--txt-3)', marginTop: 2 }}>{o.time}</div>
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
         </Field>
 
         {/* Photos */}
