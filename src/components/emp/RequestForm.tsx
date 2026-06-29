@@ -34,22 +34,27 @@ export function RequestForm({ employee, onBack, onSubmit }: RequestFormProps) {
   const [description, setDescription] = useState('')
   const [slotDate, setSlotDate] = useState(DATE_OPTIONS[1])
   const [slotTime, setSlotTime] = useState<SlotTime>('morning')
-  const [photos, setPhotos] = useState<string[]>([])
+  const [photos, setPhotos] = useState<{ url: string; preview: string }[]>([])
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return
     setUploading(true)
+    const picked = Array.from(files).slice(0, 4 - photos.length)
+    const locals = picked.map(f => ({ url: '', preview: URL.createObjectURL(f) }))
+    const base = photos.length
+    let next = [...photos, ...locals]
+    setPhotos(next)
     try {
-      const urls: string[] = []
-      for (const file of Array.from(files).slice(0, 4 - photos.length)) {
-        const url = await apiUploadPhoto(employee.lineUid, file, 'photos')
-        urls.push(url)
+      for (let i = 0; i < picked.length; i++) {
+        const url = await apiUploadPhoto(employee.lineUid, picked[i], 'photos')
+        next = next.map((p, idx) => idx === base + i ? { ...p, url } : p)
+        setPhotos(next)
       }
-      setPhotos(ph => [...ph, ...urls])
     } catch {
       alert('อัปโหลดรูปไม่สำเร็จ กรุณาลองใหม่')
+      setPhotos(photos)
     } finally {
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -69,7 +74,8 @@ export function RequestForm({ employee, onBack, onSubmit }: RequestFormProps) {
     onSubmit({
       type, category, title: title.trim(), building, floor, location: location.trim(),
       urgency, description: description.trim(), slotDate, slotTime,
-      requesterId: employee.id, requesterName: employee.displayName, photos,
+      requesterId: employee.id, requesterName: employee.displayName,
+      photos: photos.map(p => p.url).filter(Boolean),
     })
   }
 
@@ -205,30 +211,35 @@ export function RequestForm({ employee, onBack, onSubmit }: RequestFormProps) {
             style={{ display: 'none' }}
             onChange={e => handleFiles(e.target.files)}
           />
-          <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {photos.map((p, i) => (
               <div key={i} style={{
-                width: 64, height: 64, borderRadius: 12, position: 'relative', overflow: 'hidden',
+                width: 100, height: 100, borderRadius: 14, position: 'relative', overflow: 'hidden',
                 background: 'var(--surface-2)', border: '1px solid var(--line-2)',
               }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={p.preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {!p.url && (
+                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.45)', display: 'grid', placeItems: 'center' }}>
+                    <Loader2 size={20} color="#fff" className="animate-spin" />
+                  </div>
+                )}
                 <button onClick={() => setPhotos(ph => ph.filter((_, idx) => idx !== i))} style={{
-                  position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%',
-                  background: 'var(--st-urgent)', border: '2px solid var(--bg)', color: '#fff',
+                  position: 'absolute', top: 5, right: 5, width: 24, height: 24, borderRadius: '50%',
+                  background: 'rgba(0,0,0,.6)', border: 'none', color: '#fff',
                   display: 'grid', placeItems: 'center', cursor: 'pointer',
                 }}>
-                  <X size={11} />
+                  <X size={14} />
                 </button>
               </div>
             ))}
             {photos.length < 4 && (
               <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{
-                width: 64, height: 64, borderRadius: 12, cursor: uploading ? 'wait' : 'pointer',
+                width: 100, height: 100, borderRadius: 14, cursor: uploading ? 'wait' : 'pointer',
                 background: 'var(--surface-2)', border: '1px dashed var(--line-2)',
                 display: 'grid', placeItems: 'center', color: 'var(--txt-3)',
               }}>
-                {uploading ? <Loader2 size={22} className="animate-spin" /> : <Camera size={22} />}
+                {uploading ? <Loader2 size={26} className="animate-spin" /> : <Camera size={26} />}
               </button>
             )}
           </div>

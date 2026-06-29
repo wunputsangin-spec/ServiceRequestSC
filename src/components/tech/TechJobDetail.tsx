@@ -123,11 +123,12 @@ export function TechJobDetail({ job, tech, allTechs, lineUid, onBack, onStart, o
             {job.beforePhotos.length > 0 && (
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 12, color: 'var(--txt-3)', fontWeight: 600, marginBottom: 8 }}>ก่อนดำเนินการ ({job.beforePhotos.length} รูป)</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {job.beforePhotos.map((_, i) => (
-                    <div key={i} style={{ width: 64, height: 64, borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--line-2)', display: 'grid', placeItems: 'center', color: 'var(--txt-3)' }}>
-                      <Image size={22} />
-                    </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {job.beforePhotos.map((src, i) => (
+                    <a key={i} href={src} target="_blank" rel="noopener noreferrer" style={{ width: 84, height: 84, borderRadius: 10, overflow: 'hidden', background: 'var(--surface-2)', border: '1px solid var(--line-2)', display: 'block' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </a>
                   ))}
                 </div>
               </div>
@@ -135,11 +136,12 @@ export function TechJobDetail({ job, tech, allTechs, lineUid, onBack, onStart, o
             {job.afterPhotos.length > 0 && (
               <div>
                 <div style={{ fontSize: 12, color: 'var(--txt-3)', fontWeight: 600, marginBottom: 8 }}>หลังดำเนินการ ({job.afterPhotos.length} รูป)</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {job.afterPhotos.map((_, i) => (
-                    <div key={i} style={{ width: 64, height: 64, borderRadius: 10, background: 'color-mix(in srgb,#43B581 15%,transparent)', border: '1px solid color-mix(in srgb,#43B581 30%,transparent)', display: 'grid', placeItems: 'center', color: 'var(--st-done)' }}>
-                      <Image size={22} />
-                    </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {job.afterPhotos.map((src, i) => (
+                    <a key={i} href={src} target="_blank" rel="noopener noreferrer" style={{ width: 84, height: 84, borderRadius: 10, overflow: 'hidden', background: 'color-mix(in srgb,#43B581 15%,transparent)', border: '1px solid color-mix(in srgb,#43B581 30%,transparent)', display: 'block' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </a>
                   ))}
                 </div>
               </div>
