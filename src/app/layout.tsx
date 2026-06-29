@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Anuphan } from 'next/font/google'
 import { LiffProvider } from '@/lib/liff'
+import { RoleSwitcher } from '@/components/dev/RoleSwitcher'
 import './globals.css'
 
 const anuphan = Anuphan({
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen" style={{ background: 'var(--bg)', fontFamily: 'var(--font-anuphan), var(--font)' }}>
         <LiffProvider>
           {children}
+          <RoleSwitcher />
         </LiffProvider>
       </body>
     </html>
