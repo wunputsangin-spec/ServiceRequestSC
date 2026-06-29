@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { LIFF_ID } from './liffId'
 
 interface LiffProfile {
   lineUid: string
@@ -26,7 +27,6 @@ export function useLiff() {
   return useContext(LiffContext)
 }
 
-const LIFF_ID = '2010494943-XKGWxR8Y'
 
 export function LiffProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<LiffContextValue>({

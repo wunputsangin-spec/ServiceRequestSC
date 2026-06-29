@@ -48,10 +48,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         headers: { 'Content-Type': 'application/json', 'x-line-uid': uid },
         body: JSON.stringify({
           event: 'status_change',
+          jobId: job.id,
           jobCode: job.code,
           jobTitle: job.title,
           newStatus: body.status,
-          requesterLineUid: (body as Record<string, unknown>).requesterLineUid ?? '',
+          requesterLineUid: job.requesterLineUid || (body as Record<string, unknown>).requesterLineUid || '',
           assignees: job.assignees,
         }),
       }).catch(() => {/* non-critical */})

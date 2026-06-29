@@ -260,6 +260,7 @@ function rowToJob(row: Record<string, unknown>): Job {
     status: row.status as Job['status'],
     requesterId: row.requester_id as string,
     requesterName: row.requester_name as string,
+    requesterLineUid: (row.requester_line_uid as string) ?? '',
     assignees: (row.assignees as string[]) ?? [],
     photos: (row.photos as string[]) ?? [],
     beforePhotos: (row.before_photos as string[]) ?? [],

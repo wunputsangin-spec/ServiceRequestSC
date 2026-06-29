@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Home, ClipboardList, Bell, User } from 'lucide-react'
 import { useLiff } from '@/lib/liff'
 import { useEmployee, useEmpJobStore } from '@/lib/useJobStore'
@@ -44,6 +44,27 @@ export function EmpApp() {
     store.loadChats(id).catch(() => {/* no-op */})
   }
   const openJob = openJobId ? store.jobs.find(j => j.id === openJobId) ?? null : null
+
+  // ── Deep link จาก LINE: ?jobId=...&rate=1 → เปิดงาน + หน้าให้คะแนน ──
+  const deepLinkDone = useRef(false)
+  useEffect(() => {
+    if (deepLinkDone.current || !employee || store.loading) return
+    const params = new URLSearchParams(window.location.search)
+    const jobId = params.get('jobId')
+    if (!jobId) return
+    const job = store.jobs.find(j => j.id === jobId)
+    if (!job) return
+    deepLinkDone.current = true
+    setOpenJobId(jobId)
+    setScreen('detail')
+    store.loadChats(jobId).catch(() => {/* no-op */})
+    // ถ้ามาจากปุ่มให้คะแนน และงานเสร็จแล้วยังไม่ได้ให้คะแนน → เปิดหน้าให้คะแนน
+    if (params.get('rate') === '1' && job.status === 'done' && job.rating == null) {
+      setRating(true)
+    }
+    // เคลียร์ query ออกจาก URL (กันเปิดซ้ำ)
+    window.history.replaceState(null, '', window.location.pathname)
+  }, [employee, store.loading, store.jobs, store])
 
   // ── Loading ──
   if (!ready || empLoading) {

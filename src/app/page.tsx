@@ -12,17 +12,20 @@ export default function RootPage() {
   useEffect(() => {
     if (!ready || !loggedIn || !profile) return
 
+    // ส่งต่อ query (เช่น ?jobId=...&rate=1 จาก deep link ใน LINE) ไปยังหน้าปลายทาง
+    const qs = typeof window !== 'undefined' ? window.location.search : ''
+
     apiGetEmployee(profile.lineUid)
       .then(emp => {
         if (!emp) {
-          router.replace('/emp')   // EmpApp handles register gate
+          router.replace(`/emp${qs}`)   // EmpApp handles register gate
           return
         }
-        if (emp.role === 'manager')    router.replace('/manager')
-        else if (emp.role === 'technician') router.replace('/technician')
-        else                           router.replace('/emp')
+        if (emp.role === 'manager')    router.replace(`/manager${qs}`)
+        else if (emp.role === 'technician') router.replace(`/technician${qs}`)
+        else                           router.replace(`/emp${qs}`)
       })
-      .catch(() => router.replace('/emp'))
+      .catch(() => router.replace(`/emp${qs}`))
   }, [ready, loggedIn, profile, router])
 
   return (

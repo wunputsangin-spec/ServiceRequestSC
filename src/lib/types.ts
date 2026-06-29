@@ -86,6 +86,7 @@ export interface Job {
   status: JobStatus
   requesterId: string
   requesterName: string
+  requesterLineUid?: string
   assignees: string[]   // Technician.id[]
   photos: string[]
   beforePhotos: string[]

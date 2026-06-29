@@ -1,5 +1,6 @@
 // POST /api/notify — LINE Messaging API push notification
 // Called server-side only (uses LINE_CHANNEL_ACCESS_TOKEN secret)
+import { liffJobLink } from '@/lib/liffId'
 
 const LINE_API = 'https://api.line.me/v2/bot/message/push'
 const TOKEN    = process.env.LINE_CHANNEL_ACCESS_TOKEN
@@ -9,22 +10,41 @@ const STATUS_TH: Record<string, string> = {
   approved:    'อนุมัติแล้ว',
   assigned:    'มอบหมายช่างแล้ว',
   in_progress: 'กำลังดำเนินการ',
-  done:        'เสร็จสิ้น — กรุณาให้คะแนน',
+  done:        'เสร็จสิ้น',
 }
 
-async function pushLine(to: string, text: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function pushMessages(to: string, messages: any[]) {
   if (!TOKEN || !to) return
   await fetch(LINE_API, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
-    body: JSON.stringify({ to, messages: [{ type: 'text', text }] }),
+    body: JSON.stringify({ to, messages }),
   })
+}
+
+async function pushLine(to: string, text: string) {
+  await pushMessages(to, [{ type: 'text', text }])
+}
+
+// ปุ่มลิงก์เปิดแอป (template message)
+function linkButton(label: string, url: string, text: string) {
+  return {
+    type: 'template',
+    altText: text,
+    template: {
+      type: 'buttons',
+      text: text.slice(0, 160),
+      actions: [{ type: 'uri', label, uri: url }],
+    },
+  }
 }
 
 export async function POST(req: Request) {
   try {
     const body = await req.json() as {
       event: string
+      jobId?: string
       jobCode?: string
       jobTitle?: string
       newStatus?: string
@@ -75,14 +95,27 @@ export async function POST(req: Request) {
 
     if (body.event === 'status_change' && body.newStatus) {
       const statusTh = STATUS_TH[body.newStatus] ?? body.newStatus
-      const msg = `🔔 อัปเดตสถานะงาน ${body.jobCode}\n${body.jobTitle}\nสถานะ: ${statusTh}`
+      const isDone = body.newStatus === 'done'
+      const jobId = body.jobId ?? ''
 
-      // Notify requester
+      // ── แจ้งผู้แจ้ง ──
       if (body.requesterLineUid) {
-        await pushLine(body.requesterLineUid, msg)
+        if (isDone && jobId) {
+          // งานเสร็จ → ส่งปุ่มให้คะแนนช่าง (เปิดแอปไปหน้าให้คะแนนทันที)
+          const text = `✅ งาน ${body.jobCode} เสร็จเรียบร้อยแล้ว\n${body.jobTitle}\nกรุณาให้คะแนนช่างผู้ดำเนินการ`
+          await pushMessages(body.requesterLineUid, [
+            linkButton('⭐ ให้คะแนนช่าง', liffJobLink(jobId, true), text),
+          ])
+        } else {
+          const text = `🔔 อัปเดตสถานะงาน ${body.jobCode}\n${body.jobTitle}\nสถานะ: ${statusTh}`
+          const messages: object[] = jobId
+            ? [linkButton('🔍 ตรวจสอบสถานะ', liffJobLink(jobId), text)]
+            : [{ type: 'text', text }]
+          await pushMessages(body.requesterLineUid, messages)
+        }
       }
 
-      // Notify each assigned tech (their LINE UIDs come from employees table)
+      // ── แจ้งช่างที่รับผิดชอบ ──
       if (body.assignees?.length) {
         const { createClient } = await import('@/lib/supabase/server')
         const supabase = await createClient()
@@ -90,8 +123,12 @@ export async function POST(req: Request) {
           .from('employees')
           .select('line_uid')
           .in('id', body.assignees)
+        const text = `🔔 อัปเดตสถานะงาน ${body.jobCode}\n${body.jobTitle}\nสถานะ: ${statusTh}`
+        const messages: object[] = jobId
+          ? [linkButton('🔍 เปิดงาน', liffJobLink(jobId), text)]
+          : [{ type: 'text', text }]
         for (const row of data ?? []) {
-          await pushLine(row.line_uid as string, msg)
+          await pushMessages(row.line_uid as string, messages)
         }
       }
     }
