@@ -2,6 +2,14 @@
 
 import type { Job, Employee, ChatMessage } from './types'
 
+export type AppSettings = {
+  buildings: string[]
+  floors: string[]
+  repair_categories: { key: string; label: string }[]
+  service_categories: { key: string; label: string }[]
+  line_notify: { enabled: boolean; groupId: string }
+}
+
 // fetch wrapper ที่แนบ x-line-uid header อัตโนมัติ
 export function apiFetch(lineUid: string, input: string, init?: RequestInit) {
   return fetch(input, {
@@ -101,4 +109,52 @@ export async function apiUploadPhoto(lineUid: string, file: File, bucket = 'phot
   if (!res.ok) throw new Error(await res.text())
   const json = await res.json()
   return json.url as string
+}
+
+// ─── Admin: Users ────────────────────────────────────────────────────────────
+
+export async function apiListUsers(lineUid: string): Promise<Employee[]> {
+  const res = await apiFetch(lineUid, '/api/admin/users')
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export async function apiUpdateUser(lineUid: string, id: string, patch: Partial<{
+  displayName: string; employeeCode: string; department: string; building: string
+  floor: string; phone: string; role: string; suspended: boolean
+}>): Promise<Employee> {
+  const res = await apiFetch(lineUid, '/api/admin/users', {
+    method: 'PATCH', body: JSON.stringify({ id, ...patch }),
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export async function apiDeleteUser(lineUid: string, id: string): Promise<void> {
+  const res = await apiFetch(lineUid, '/api/admin/users', {
+    method: 'DELETE', body: JSON.stringify({ id }),
+  })
+  if (!res.ok) throw new Error(await res.text())
+}
+
+// ─── Admin: Settings ─────────────────────────────────────────────────────────
+
+export async function apiGetSettings(lineUid: string): Promise<AppSettings> {
+  const res = await apiFetch(lineUid, '/api/admin/settings')
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export async function apiUpdateSetting(lineUid: string, key: string, value: unknown): Promise<void> {
+  const res = await apiFetch(lineUid, '/api/admin/settings', {
+    method: 'PUT', body: JSON.stringify({ key, value }),
+  })
+  if (!res.ok) throw new Error(await res.text())
+}
+
+// Public settings (for forms — buildings/floors/categories)
+export async function apiGetPublicSettings(lineUid: string): Promise<AppSettings> {
+  const res = await apiFetch(lineUid, '/api/settings')
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
 }

@@ -238,6 +238,7 @@ function rowToEmployee(row: Record<string, unknown>): Employee {
     phone: row.phone as string,
     isRegistered: true,
     role: (row.role ?? (row.is_technician ? 'technician' : 'employee')) as Employee['role'],
+    suspended: (row.suspended as boolean) ?? false,
   }
 }
 
@@ -341,3 +342,87 @@ export async function getAllRequests(): Promise<TechRequest[]> {
 export async function acceptRequest(): Promise<void> { /* stub */ }
 export async function updateRequestStatus(): Promise<void> { /* stub */ }
 export async function reassignRequest(): Promise<void> { /* stub */ }
+
+// ─── Admin: User management ────────────────────────────────────────────────────
+
+export async function listEmployees(): Promise<Employee[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('employees')
+    .select('*')
+    .order('display_name')
+  if (error) throw new Error(error.message)
+  return (data ?? []).map(rowToEmployee)
+}
+
+export async function adminUpdateEmployee(id: string, patch: Partial<{
+  displayName: string
+  employeeCode: string
+  department: string
+  building: string
+  floor: string
+  phone: string
+  role: string
+  suspended: boolean
+}>): Promise<Employee> {
+  const supabase = await createClient()
+  const dbPatch: Record<string, unknown> = {}
+  if (patch.displayName  !== undefined) dbPatch.display_name  = patch.displayName
+  if (patch.employeeCode !== undefined) dbPatch.employee_code = patch.employeeCode
+  if (patch.department   !== undefined) dbPatch.department    = patch.department
+  if (patch.building     !== undefined) dbPatch.building      = patch.building
+  if (patch.floor        !== undefined) dbPatch.floor         = patch.floor
+  if (patch.phone        !== undefined) dbPatch.phone         = patch.phone
+  if (patch.role         !== undefined) {
+    dbPatch.role = patch.role
+    dbPatch.is_technician = patch.role === 'technician'
+  }
+  if (patch.suspended    !== undefined) dbPatch.suspended     = patch.suspended
+
+  const { data, error } = await supabase
+    .from('employees')
+    .update(dbPatch)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return rowToEmployee(data)
+}
+
+export async function adminDeleteEmployee(id: string): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase.from('employees').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+// ─── Admin: App settings ───────────────────────────────────────────────────────
+
+export type AppSettings = {
+  buildings: string[]
+  floors: string[]
+  repair_categories: { key: string; label: string }[]
+  service_categories: { key: string; label: string }[]
+  line_notify: { enabled: boolean; groupId: string }
+}
+
+export async function getSettings(): Promise<AppSettings> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.from('app_settings').select('key, value')
+  if (error) throw new Error(error.message)
+  const map = Object.fromEntries((data ?? []).map(r => [r.key, r.value]))
+  return {
+    buildings:          (map.buildings as string[]) ?? [],
+    floors:             (map.floors as string[]) ?? [],
+    repair_categories:  (map.repair_categories as { key: string; label: string }[]) ?? [],
+    service_categories: (map.service_categories as { key: string; label: string }[]) ?? [],
+    line_notify:        (map.line_notify as { enabled: boolean; groupId: string }) ?? { enabled: true, groupId: '' },
+  }
+}
+
+export async function updateSetting(key: string, value: unknown): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('app_settings')
+    .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+  if (error) throw new Error(error.message)
+}

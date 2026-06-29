@@ -1,9 +1,10 @@
 'use client'
-import { useState, useCallback } from 'react'
-import { LayoutDashboard, Table2, Users } from 'lucide-react'
+import { useState, useCallback, useEffect } from 'react'
+import { LayoutDashboard, Table2, Users, UserCog, Settings } from 'lucide-react'
 import { useLiff } from '@/lib/liff'
 import { useEmployee, useManagerJobStore } from '@/lib/useJobStore'
 import type { Job } from '@/lib/types'
+import { apiGetSettings, type AppSettings } from '@/lib/api'
 import { DesktopShell } from '@/components/layout/DesktopShell'
 import { Toast } from '@/components/ui/BottomSheet'
 import { OverviewPage } from './OverviewPage'
@@ -11,6 +12,8 @@ import { JobTablePage } from './JobTablePage'
 import { TeamPage } from './TeamPage'
 import { AssignDialog } from './AssignDialog'
 import { JobDrawer } from './JobDrawer'
+import { AdminUsersPage } from './AdminUsersPage'
+import { AdminSettingsPage } from './AdminSettingsPage'
 
 export function ManagerApp() {
   const { profile } = useLiff()
@@ -21,11 +24,18 @@ export function ManagerApp() {
   const [assignJob, setAssignJob] = useState<Job | null>(null)
   const [drawerId, setDrawerId]   = useState<string | null>(null)
   const [toast, setToast]         = useState<string | null>(null)
+  const [settings, setSettings]   = useState<AppSettings | null>(null)
 
   const showToast = useCallback((msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(null), 1900)
   }, [])
+
+  // Load app settings once (used by admin pages + user editor)
+  useEffect(() => {
+    if (!profile?.lineUid) return
+    apiGetSettings(profile.lineUid).then(setSettings).catch(() => {/* no-op */})
+  }, [profile?.lineUid])
 
   const drawerJob = drawerId ? store.jobs.find(j => j.id === drawerId) ?? null : null
 
@@ -33,6 +43,8 @@ export function ManagerApp() {
     { key: 'overview', label: 'ภาพรวม', icon: <LayoutDashboard size={18} />, badge: store.pending.length },
     { key: 'jobs',     label: 'รายการแจ้งซ่อม', icon: <Table2 size={18} /> },
     { key: 'team',     label: 'ทีมช่าง', icon: <Users size={18} /> },
+    { key: 'users',    label: 'จัดการผู้ใช้', icon: <UserCog size={18} /> },
+    { key: 'settings', label: 'ตั้งค่าระบบ', icon: <Settings size={18} /> },
   ]
 
   const approve = async (id: string) => {
@@ -75,6 +87,12 @@ export function ManagerApp() {
         <JobTablePage jobs={store.jobs} techs={store.techs} onOpen={(j) => setDrawerId(j.id)} />
       )}
       {nav === 'team' && <TeamPage techs={store.techs} />}
+      {nav === 'users' && (
+        <AdminUsersPage lineUid={profile?.lineUid ?? ''} settings={settings} onToast={showToast} />
+      )}
+      {nav === 'settings' && (
+        <AdminSettingsPage lineUid={profile?.lineUid ?? ''} onToast={showToast} onSettingsChange={setSettings} />
+      )}
 
       {assignJob && (
         <AssignDialog

@@ -37,9 +37,23 @@ export async function POST(req: Request) {
       return Response.json({ ok: true, skipped: 'no token' })
     }
 
+    // Respect admin settings (enabled toggle + group id)
+    let notifyEnabled = true
+    let settingsGroupId = ''
+    try {
+      const { getSettings } = await import('@/lib/db')
+      const s = await getSettings()
+      notifyEnabled = s.line_notify.enabled
+      settingsGroupId = s.line_notify.groupId
+    } catch {/* settings table may not exist yet — default enabled */}
+
+    if (!notifyEnabled) {
+      return Response.json({ ok: true, skipped: 'disabled' })
+    }
+
     if (body.event === 'new_job') {
-      // Notify manager channel / group — use LINE_MANAGER_GROUP_ID env
-      const groupId = process.env.LINE_MANAGER_GROUP_ID
+      // Notify manager group — prefer admin setting, fallback to env
+      const groupId = settingsGroupId || process.env.LINE_MANAGER_GROUP_ID
       if (groupId) {
         await pushLine(groupId, `📋 คำขอใหม่ · ${body.jobCode}\n${body.jobTitle}\nกรุณาตรวจสอบและอนุมัติ`)
       }

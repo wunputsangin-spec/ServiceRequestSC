@@ -43,6 +43,7 @@ export interface Employee {
   phone: string
   isRegistered: boolean
   role: 'employee' | 'technician' | 'manager'
+  suspended?: boolean
 }
 
 /* ─── Technician ────────────────────────────────────────────────────── */
