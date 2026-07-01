@@ -6,6 +6,7 @@ import { StatusPill } from '@/components/ui/StatusPill'
 import { Avatar } from '@/components/ui/Avatar'
 import { catMeta } from '@/components/emp/catMeta'
 import { STATUS_META } from '@/lib/constants'
+import { ExportButton } from './ExportButton'
 
 interface JobTablePageProps {
   jobs: Job[]
@@ -44,11 +45,31 @@ export function JobTablePage({ jobs, techs, onOpen }: JobTablePageProps) {
 
   const techName = (id: string) => techs.find(t => t.id === id)
 
+  const exportRows = rows.map(j => ({
+    'รหัส': j.code,
+    'หัวข้อ': j.title,
+    'ประเภท': j.type === 'repair' ? 'แจ้งซ่อม' : 'ขอบริการ',
+    'หมวดหมู่': catMeta(j.category).label,
+    'อาคาร': j.building,
+    'ชั้น': j.floor,
+    'จุด/ห้อง': j.location,
+    'ความเร่งด่วน': j.urgency === 'urgent' ? 'ด่วน' : 'ปกติ',
+    'สถานะ': STATUS_META[j.status].label,
+    'ผู้แจ้ง': j.requesterName,
+    'ช่างผู้รับผิดชอบ': j.assignees.map(id => techName(id)?.name).filter(Boolean).join(', '),
+    'คะแนน': j.rating ?? '',
+    'รายละเอียด': j.description,
+    'วันที่แจ้ง': j.createdAt,
+  }))
+
   return (
     <>
-      <div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--txt)' }}>รายการแจ้งซ่อม</h1>
-        <p style={{ fontSize: 13.5, color: 'var(--txt-3)', marginTop: 4 }}>คำขอทั้งหมดในระบบ · {rows.length} รายการ</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--txt)' }}>รายการแจ้งซ่อม</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--txt-3)', marginTop: 4 }}>คำขอทั้งหมดในระบบ · {rows.length} รายการ</p>
+        </div>
+        <ExportButton filename="รายการแจ้งซ่อม" sheetName="Jobs" rows={exportRows} />
       </div>
 
       {/* Filters */}

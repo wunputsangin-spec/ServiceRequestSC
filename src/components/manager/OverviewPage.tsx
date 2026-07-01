@@ -6,6 +6,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Btn } from '@/components/ui/Btn'
 import { CatBadge } from '@/components/emp/catMeta'
 import { StatCards } from './StatCards'
+import { ExportButton } from './ExportButton'
 
 interface Stats { total: number; pending: number; approved: number; assigned: number; inProgress: number; done: number }
 
@@ -54,11 +55,23 @@ function MiniJob({ job }: { job: Job }) {
 export function OverviewPage({ stats, pending, toAssign, active, techs, onApprove, onAssign, onEdit }: OverviewPageProps) {
   const techName = (id: string) => techs.find(t => t.id === id)
 
+  const exportRows = [
+    { 'รายการ': 'งานทั้งหมด', 'จำนวน': stats.total },
+    { 'รายการ': 'รออนุมัติ', 'จำนวน': stats.pending },
+    { 'รายการ': 'อนุมัติแล้ว (รอมอบหมาย)', 'จำนวน': stats.approved },
+    { 'รายการ': 'มอบหมายแล้ว', 'จำนวน': stats.assigned },
+    { 'รายการ': 'กำลังดำเนินการ', 'จำนวน': stats.inProgress },
+    { 'รายการ': 'เสร็จสิ้น', 'จำนวน': stats.done },
+  ]
+
   return (
     <>
-      <div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--txt)' }}>ภาพรวม</h1>
-        <p style={{ fontSize: 13.5, color: 'var(--txt-3)', marginTop: 4 }}>สรุปสถานะงานแจ้งซ่อมและบริการทั้งหมด</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--txt)' }}>ภาพรวม</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--txt-3)', marginTop: 4 }}>สรุปสถานะงานแจ้งซ่อมและบริการทั้งหมด</p>
+        </div>
+        <ExportButton filename="สรุปภาพรวม" sheetName="Summary" rows={exportRows} />
       </div>
 
       <StatCards stats={stats} />

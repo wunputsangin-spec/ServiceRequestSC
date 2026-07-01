@@ -5,6 +5,7 @@ import type { Employee } from '@/lib/types'
 import { Avatar } from '@/components/ui/Avatar'
 import { Btn } from '@/components/ui/Btn'
 import { apiListUsers, apiUpdateUser, apiDeleteUser, type AppSettings } from '@/lib/api'
+import { ExportButton } from './ExportButton'
 
 const ROLE_META: Record<string, { label: string; color: string; Icon: typeof Shield }> = {
   manager:    { label: 'ผู้จัดการ', color: '#DDB056', Icon: Shield },
@@ -79,11 +80,25 @@ export function AdminUsersPage({ lineUid, settings, onToast }: AdminUsersPagePro
     }
   }
 
+  const exportRows = rows.map(u => ({
+    'ชื่อ-นามสกุล': u.displayName,
+    'รหัสพนักงาน': u.employeeCode,
+    'แผนก/ตำแหน่ง': u.department,
+    'อาคาร': u.building,
+    'ชั้น': u.floor,
+    'เบอร์โทร': u.phone,
+    'บทบาท': (ROLE_META[u.role] ?? ROLE_META.employee).label,
+    'สถานะ': u.suspended ? 'ระงับ' : 'ใช้งาน',
+  }))
+
   return (
     <>
-      <div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--txt)' }}>จัดการผู้ใช้งาน</h1>
-        <p style={{ fontSize: 13.5, color: 'var(--txt-3)', marginTop: 4 }}>ผู้ใช้ทั้งหมด {users.length} คน · แสดง {rows.length} รายการ</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--txt)' }}>จัดการผู้ใช้งาน</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--txt-3)', marginTop: 4 }}>ผู้ใช้ทั้งหมด {users.length} คน · แสดง {rows.length} รายการ</p>
+        </div>
+        <ExportButton filename="รายชื่อผู้ใช้งาน" sheetName="Users" rows={exportRows} />
       </div>
 
       {/* Filters */}

@@ -1,18 +1,32 @@
 import { Star, Wrench, CheckCircle2 } from 'lucide-react'
 import type { Technician } from '@/lib/types'
 import { Avatar } from '@/components/ui/Avatar'
+import { ExportButton } from './ExportButton'
 
 export function TeamPage({ techs }: { techs: Technician[] }) {
   const avgTeam = techs.length ? techs.reduce((s, t) => s + t.avgRating, 0) / techs.length : 0
   const totalActive = techs.reduce((s, t) => s + t.activeJobs, 0)
 
+  const exportRows = techs.map(t => ({
+    'ชื่อช่าง': t.name,
+    'ความชำนาญ': t.skill,
+    'งานคงค้าง': t.activeJobs,
+    'งานสำเร็จ': t.totalDone,
+    'คะแนนเฉลี่ย': t.avgRating.toFixed(2),
+    'ภาระงาน (%)': t.load,
+    'สถานะ': t.busy ? 'งานเต็ม' : 'ว่าง',
+  }))
+
   return (
     <>
-      <div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--txt)' }}>ทีมช่าง</h1>
-        <p style={{ fontSize: 13.5, color: 'var(--txt-3)', marginTop: 4 }}>
-          ช่าง {techs.length} คน · คะแนนเฉลี่ยทีม {avgTeam.toFixed(2)} · งานคงค้างรวม {totalActive}
-        </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--txt)' }}>ทีมช่าง</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--txt-3)', marginTop: 4 }}>
+            ช่าง {techs.length} คน · คะแนนเฉลี่ยทีม {avgTeam.toFixed(2)} · งานคงค้างรวม {totalActive}
+          </p>
+        </div>
+        <ExportButton filename="ทีมช่าง" sheetName="Technicians" rows={exportRows} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
