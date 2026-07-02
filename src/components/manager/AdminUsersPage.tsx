@@ -98,7 +98,14 @@ export function AdminUsersPage({ lineUid, settings, onToast }: AdminUsersPagePro
           <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--txt)' }}>จัดการผู้ใช้งาน</h1>
           <p style={{ fontSize: 13.5, color: 'var(--txt-3)', marginTop: 4 }}>ผู้ใช้ทั้งหมด {users.length} คน · แสดง {rows.length} รายการ</p>
         </div>
-        <ExportButton filename="รายชื่อผู้ใช้งาน" sheetName="Users" rows={exportRows} />
+        <ExportButton
+          filename="รายชื่อผู้ใช้งาน" sheetName="Users" rows={exportRows}
+          title="รายงานรายชื่อผู้ใช้งาน"
+          filterInfo={[
+            `บทบาท: ${ROLE_FILTERS.find(f => f.key === roleFilter)?.label ?? 'ทั้งหมด'}`,
+            q ? `ค้นหา: "${q}"` : null,
+          ].filter(Boolean).join(' · ')}
+        />
       </div>
 
       {/* Filters */}

@@ -7,12 +7,14 @@ interface ExportButtonProps {
   sheetName: string
   rows: Record<string, unknown>[]
   label?: string
+  title?: string
+  filterInfo?: string
 }
 
-export function ExportButton({ filename, sheetName, rows, label = 'Export Excel' }: ExportButtonProps) {
+export function ExportButton({ filename, sheetName, rows, label = 'Export Excel', title, filterInfo }: ExportButtonProps) {
   return (
     <button
-      onClick={() => exportExcel(filename, sheetName, rows)}
+      onClick={() => exportExcel(filename, sheetName, rows, { title, filterInfo })}
       disabled={rows.length === 0}
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 7,

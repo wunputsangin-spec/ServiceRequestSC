@@ -96,6 +96,11 @@ export interface Job {
   feedback: string | null
   createdAt: string
   updatedAt: string
+  startedAt?: string | null   // เวลาช่างเริ่มดำเนินการ (แสดงผล)
+  doneAt?: string | null      // เวลาเสร็จ (แสดงผล)
+  createdAtISO?: string       // ISO ดิบ สำหรับวิเคราะห์
+  startedAtISO?: string | null
+  doneAtISO?: string | null
   chat: ChatMessage[]
 }
 

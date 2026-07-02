@@ -169,6 +169,9 @@ export async function updateJob(id: string, patch: Partial<{
   if (patch.feedback     !== undefined) dbPatch.feedback      = patch.feedback
   if (patch.beforePhotos !== undefined) dbPatch.before_photos = patch.beforePhotos
   if (patch.afterPhotos  !== undefined) dbPatch.after_photos  = patch.afterPhotos
+  // บันทึกเวลาเริ่ม/เสร็จ ตามการเปลี่ยนสถานะ
+  if (patch.status === 'in_progress') dbPatch.started_at = new Date().toISOString()
+  if (patch.status === 'done')        dbPatch.done_at    = new Date().toISOString()
   const { data, error } = await supabase
     .from('jobs')
     .update(dbPatch)
@@ -270,6 +273,11 @@ function rowToJob(row: Record<string, unknown>): Job {
     feedback: (row.feedback as string | null) ?? null,
     createdAt: thaiDateTime(row.created_at as string),
     updatedAt: thaiDateTime(row.updated_at as string),
+    startedAt: row.started_at ? thaiDateTime(row.started_at as string) : null,
+    doneAt: row.done_at ? thaiDateTime(row.done_at as string) : null,
+    createdAtISO: row.created_at as string,
+    startedAtISO: (row.started_at as string | null) ?? null,
+    doneAtISO: (row.done_at as string | null) ?? null,
     chat: [],
   }
 }

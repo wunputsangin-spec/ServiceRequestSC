@@ -71,7 +71,7 @@ export function OverviewPage({ stats, pending, toAssign, active, techs, onApprov
           <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--txt)' }}>ภาพรวม</h1>
           <p style={{ fontSize: 13.5, color: 'var(--txt-3)', marginTop: 4 }}>สรุปสถานะงานแจ้งซ่อมและบริการทั้งหมด</p>
         </div>
-        <ExportButton filename="สรุปภาพรวม" sheetName="Summary" rows={exportRows} />
+        <ExportButton filename="สรุปภาพรวม" sheetName="Summary" rows={exportRows} title="รายงานสรุปภาพรวมงาน" />
       </div>
 
       <StatCards stats={stats} />

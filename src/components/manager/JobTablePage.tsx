@@ -45,6 +45,16 @@ export function JobTablePage({ jobs, techs, onOpen }: JobTablePageProps) {
 
   const techName = (id: string) => techs.find(t => t.id === id)
 
+  const durationText = (job: Job): string => {
+    if (!job.startedAtISO || !job.doneAtISO) return ''
+    const ms = new Date(job.doneAtISO).getTime() - new Date(job.startedAtISO).getTime()
+    if (ms < 0) return ''
+    const mins = Math.round(ms / 60000)
+    if (mins < 60) return `${mins} นาที`
+    const h = Math.floor(mins / 60), m = mins % 60
+    return m ? `${h} ชม. ${m} นาที` : `${h} ชม.`
+  }
+
   const exportRows = rows.map(j => ({
     'รหัส': j.code,
     'หัวข้อ': j.title,
@@ -58,9 +68,19 @@ export function JobTablePage({ jobs, techs, onOpen }: JobTablePageProps) {
     'ผู้แจ้ง': j.requesterName,
     'ช่างผู้รับผิดชอบ': j.assignees.map(id => techName(id)?.name).filter(Boolean).join(', '),
     'คะแนน': j.rating ?? '',
+    'เวลาที่แจ้ง': j.createdAt,
+    'เวลาที่เริ่มดำเนินการ': j.startedAt ?? '-',
+    'เวลาที่เสร็จ': j.doneAt ?? '-',
+    'ระยะเวลาดำเนินการ': durationText(j) || '-',
     'รายละเอียด': j.description,
-    'วันที่แจ้ง': j.createdAt,
   }))
+
+  const filterInfo = [
+    `สถานะ: ${status === 'all' ? 'ทั้งหมด' : STATUS_META[status].label}`,
+    `ประเภท: ${type === 'all' ? 'ทุกประเภท' : type === 'repair' ? 'แจ้งซ่อม' : 'ขอบริการ'}`,
+    urgentOnly ? 'เฉพาะด่วน' : null,
+    q ? `ค้นหา: "${q}"` : null,
+  ].filter(Boolean).join(' · ')
 
   return (
     <>
@@ -69,7 +89,10 @@ export function JobTablePage({ jobs, techs, onOpen }: JobTablePageProps) {
           <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--txt)' }}>รายการแจ้งซ่อม</h1>
           <p style={{ fontSize: 13.5, color: 'var(--txt-3)', marginTop: 4 }}>คำขอทั้งหมดในระบบ · {rows.length} รายการ</p>
         </div>
-        <ExportButton filename="รายการแจ้งซ่อม" sheetName="Jobs" rows={exportRows} />
+        <ExportButton
+          filename="รายการแจ้งซ่อม" sheetName="Jobs" rows={exportRows}
+          title="รายงานรายการแจ้งซ่อม/ขอบริการ" filterInfo={filterInfo}
+        />
       </div>
 
       {/* Filters */}

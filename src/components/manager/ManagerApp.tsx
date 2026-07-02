@@ -1,6 +1,6 @@
 'use client'
 import { useState, useCallback, useEffect } from 'react'
-import { LayoutDashboard, Table2, Users, UserCog, Settings } from 'lucide-react'
+import { LayoutDashboard, Table2, Users, UserCog, Settings, BarChart3 } from 'lucide-react'
 import { useLiff } from '@/lib/liff'
 import { useEmployee, useManagerJobStore } from '@/lib/useJobStore'
 import type { Job } from '@/lib/types'
@@ -14,6 +14,7 @@ import { AssignDialog } from './AssignDialog'
 import { JobDrawer } from './JobDrawer'
 import { AdminUsersPage } from './AdminUsersPage'
 import { AdminSettingsPage } from './AdminSettingsPage'
+import { AnalyticsPage } from './AnalyticsPage'
 
 export function ManagerApp() {
   const { profile } = useLiff()
@@ -42,6 +43,7 @@ export function ManagerApp() {
   const navItems = [
     { key: 'overview', label: 'ภาพรวม', icon: <LayoutDashboard size={18} />, badge: store.pending.length },
     { key: 'jobs',     label: 'รายการแจ้งซ่อม', icon: <Table2 size={18} /> },
+    { key: 'analytics', label: 'วิเคราะห์งาน', icon: <BarChart3 size={18} /> },
     { key: 'team',     label: 'ทีมช่าง', icon: <Users size={18} /> },
     { key: 'users',    label: 'จัดการผู้ใช้', icon: <UserCog size={18} /> },
     { key: 'settings', label: 'ตั้งค่าระบบ', icon: <Settings size={18} /> },
@@ -86,6 +88,7 @@ export function ManagerApp() {
       {nav === 'jobs' && (
         <JobTablePage jobs={store.jobs} techs={store.techs} onOpen={(j) => setDrawerId(j.id)} />
       )}
+      {nav === 'analytics' && <AnalyticsPage jobs={store.jobs} techs={store.techs} />}
       {nav === 'team' && <TeamPage techs={store.techs} />}
       {nav === 'users' && (
         <AdminUsersPage lineUid={profile?.lineUid ?? ''} settings={settings} onToast={showToast} />

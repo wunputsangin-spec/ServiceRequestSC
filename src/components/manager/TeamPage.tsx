@@ -26,7 +26,7 @@ export function TeamPage({ techs }: { techs: Technician[] }) {
             ช่าง {techs.length} คน · คะแนนเฉลี่ยทีม {avgTeam.toFixed(2)} · งานคงค้างรวม {totalActive}
           </p>
         </div>
-        <ExportButton filename="ทีมช่าง" sheetName="Technicians" rows={exportRows} />
+        <ExportButton filename="ทีมช่าง" sheetName="Technicians" rows={exportRows} title="รายงานทีมช่าง" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
